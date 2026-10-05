@@ -129,6 +129,28 @@ def register(app, store: GitHubStore, oauth, webhook_url: str, webhook_secret: s
         deliveries = await store.list_deliveries(query.from_user.id, repository_id)
         await query.message.edit_text(DELIVERY_LIST, reply_markup=integration_deliveries(deliveries, repository_id))
 
+    @app.on_callback_query(filters.regex(r"^integration:\d+:deliveries:refresh$"))
+    async def integration_deliveries_refresh(client, query):
+        await query.answer()
+        repository_id = int(query.data.split(":")[1])
+        integration = await store.integration(query.from_user.id, repository_id)
+        if not integration or not integration.get("hook_id"):
+            await query.message.edit_text(INTEGRATIONS_EMPTY)
+            return
+        try:
+            token = await store.token(query.from_user.id, oauth)
+            if not token:
+                await query.message.edit_text(NOT_CONNECTED)
+                return
+            service = RepositoryService(GitHubClient(token))
+            deliveries = await service.webhook_deliveries(integration["owner"], integration["name"], integration["hook_id"], per_page=25)
+            for delivery in deliveries:
+                await store.sync_webhook_delivery(query.from_user.id, repository_id, delivery)
+            local = await store.list_deliveries(query.from_user.id, repository_id)
+            await query.message.edit_text(DELIVERY_LIST, reply_markup=integration_deliveries(local, repository_id))
+        except Exception as exc:
+            await query.message.edit_text(error_message(str(exc)))
+
     @app.on_callback_query(filters.regex(r"^delivery:\d+:[^:]+$"))
     async def delivery_view(client, query):
         await query.answer()
