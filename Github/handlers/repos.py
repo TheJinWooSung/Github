@@ -1,6 +1,5 @@
 from pyrogram import filters
-from ..buttons import repositories, repository, back
-from ..text import repository_list, repo_home, error_message
+from ..buttons import repositories, repository, back, repository_list, repo_home, error_message, FILES, BRANCHES
 
 def register(app, service):
     @app.on_message(filters.command("repos"))
@@ -17,10 +16,10 @@ def register(app, service):
         data = query.data
         await query.answer()
         if data == "repo:files":
-            await query.message.edit_text("<b>Files</b>", reply_markup=back())
+            await query.message.edit_text(f"<b>{FILES}</b>", reply_markup=back())
             return
         if data == "repo:branches":
-            await query.message.edit_text("<b>Branches</b>", reply_markup=back())
+            await query.message.edit_text(f"<b>{BRANCHES}</b>", reply_markup=back())
             return
         if data.count(":") == 1:
             full_name = data.split(":", 1)[1]
