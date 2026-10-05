@@ -41,7 +41,7 @@ The interface is designed around short actions and focused repository screens ra
 | Pull requests | Inspect files, commits and reviews |
 | Reviews | Approve, request changes and comment |
 | PR lifecycle | Merge, close, reopen and handle drafts |
-| Integrations | Create and remove repository webhooks |
+| Integrations | Create, remove and configure repository webhooks |
 | Notifications | Receive GitHub repository events in Telegram |
 | Linked repositories | Link, switch and remove repositories per Telegram user |
 | Releases | Latest release, creation and generated changelogs |
@@ -158,7 +158,7 @@ Where available, merge operations use the current pull-request head SHA so a sta
 
 ## GitHub integrations
 
-Repositories can be connected to Telegram notifications through GitHub webhooks.
+Repositories can be connected to Telegram notifications through GitHub webhooks. Each integration can independently enable or disable supported GitHub events and pause or resume the hook without recreating it.
 
 ~~~text
 push
@@ -394,11 +394,11 @@ For production, provide a public HTTPS endpoint, persistent MongoDB/Redis instan
 
 ### Remaining product expansion
 
-- [ ] Multi-file commit staging UI
+- [x] Multi-file commit staging UI
 - [x] Telegram WebApp editor
 - [x] Rich interactive diff viewer
 - [x] GitHub Discussions UI and answer workflow
-- [ ] Full webhook event management UI
+- [x] Full webhook event management UI
 
 ## Development
 
