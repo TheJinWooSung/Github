@@ -39,6 +39,7 @@ class ReviewSession:
     event: str
     expires_at: float = 0.0
 
+@dataclass
 class BrowserSession:
     user_id: int
     chat_id: int
