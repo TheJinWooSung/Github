@@ -150,6 +150,10 @@ class GitHubStore:
     async def delivery(self, telegram_id: int, delivery_id: str):
         return await self.deliveries.find_one({"telegram_id": telegram_id, "delivery_id": delivery_id})
 
+    async def update_delivery_status(self, telegram_id: int, delivery_id: str, status: str) -> bool:
+        result = await self.deliveries.update_one({"telegram_id": telegram_id, "delivery_id": delivery_id}, {"$set": {"status": status, "updated_at": datetime.now(timezone.utc)}})
+        return result.modified_count == 1
+
     async def integrations_for_repository(self, repository_id: int):
         return await self.integrations.find({"repository_id": repository_id}).to_list(length=100)
 
