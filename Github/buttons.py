@@ -48,8 +48,8 @@ def start():
 def repository(repository_id: int):
     return InlineKeyboardMarkup([_row((FILES, f"repo:{repository_id}:files"), (COMMITS, f"repo:{repository_id}:commits")), _row((BRANCHES, f"repo:{repository_id}:branches"), (TAGS, f"repo:{repository_id}:tags")), _row((PULL_REQUESTS, f"repo:{repository_id}:pulls"), (ISSUES, f"repo:{repository_id}:issues")), _row((ACTIONS, f"repo:{repository_id}:actions"), (RELEASES, f"repo:{repository_id}:releases")), _row((CONTRIBUTORS, f"repo:{repository_id}:contributors"), (DEPLOYMENTS, f"repo:{repository_id}:deployments")), _row((HOME, "nav:home"))])
 
-def commit_review():
-    return InlineKeyboardMarkup([_row(("Edit", "commit:edit"), ("Cancel", "commit:cancel")), _row(("Commit", "commit:confirm"))])
+def commit_review(token: str):
+    return InlineKeyboardMarkup([_row(("Edit", f"edit:{token}"), ("Cancel", f"commit:{token}:cancel")), _row(("Commit", f"commit:{token}:confirm"))])
 
 def back(target: str = "nav:back"):
     return InlineKeyboardMarkup([_row((BACK, target))])
