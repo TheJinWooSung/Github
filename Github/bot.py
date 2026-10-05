@@ -3,11 +3,15 @@ from pyrogram import Client
 from .config import Config
 from .github.auth import GitHubAppAuth
 from .github.client import GitHubClient
+from .github.oauth import GitHubOAuth
 from .github.repositories import RepositoryService
 from .handlers.start import register as register_start
 from .handlers.repos import register as register_repositories
 from .handlers.files import register as register_files
+from .handlers.oauth import register as register_oauth
 from .state import SessionStore
+from .storage import GitHubStore
+from .web import build_web
 
 class GitHubBot:
     def __init__(self, config: Config):
@@ -16,7 +20,10 @@ class GitHubBot:
         self.github = GitHubClient("")
         self.repositories = RepositoryService(self.github)
         self.sessions = SessionStore(config.redis_url)
+        self.store = GitHubStore(config.mongo_uri, config.token_encryption_key)
         self.auth = GitHubAppAuth(config.github_app_id, config.github_private_key)
+        self.oauth = GitHubOAuth(config.github_client_id, config.github_client_secret, f"{config.webhook_url}/oauth/callback")
+        self.web = build_web(self, self.oauth, self.sessions, self.store)
         self._auth_task: asyncio.Task | None = None
         self._registered = False
 
@@ -45,10 +52,12 @@ class GitHubBot:
         register_start(self.app)
         register_repositories(self.app, self.repositories, self.sessions)
         register_files(self.app, self.repositories, self.sessions)
+        register_oauth(self.app, self.oauth, self.sessions, self.store)
         self._registered = True
         return self
 
     async def start(self):
+        await self.store.setup()
         await self.authenticate()
         self.register()
         await self.app.start()
@@ -65,6 +74,7 @@ class GitHubBot:
         if self.app.is_connected:
             await self.app.stop()
         await self.sessions.close()
+        await self.store.close()
 
     def run(self):
         self.register()
