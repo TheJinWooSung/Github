@@ -145,6 +145,47 @@ class RepositoryService:
     async def pull_request(self, owner: str, name: str, number: int) -> dict[str, Any]:
         return await self.client.request("GET", f"/repos/{owner}/{name}/pulls/{number}")
 
+
+    async def create_pull_request(self, owner: str, name: str, title: str, head: str, base: str, body: str = "", draft: bool = False) -> dict[str, Any]:
+        return await self.client.request("POST", f"/repos/{owner}/{name}/pulls", json={"title": title, "head": head, "base": base, "body": body, "draft": draft})
+
+    async def update_pull_request(self, owner: str, name: str, number: int, **fields: Any) -> dict[str, Any]:
+        allowed = {"title", "body", "state", "base", "maintainer_can_modify"}
+        payload = {key: value for key, value in fields.items() if key in allowed and value is not None}
+        return await self.client.request("PATCH", f"/repos/{owner}/{name}/pulls/{number}", json=payload)
+
+    async def merge_pull_request(self, owner: str, name: str, number: int, method: str = "merge", expected_head_sha: str | None = None) -> dict[str, Any]:
+        payload = {"merge_method": method}
+        if expected_head_sha:
+            payload["sha"] = expected_head_sha
+        return await self.client.request("PUT", f"/repos/{owner}/{name}/pulls/{number}/merge", json=payload)
+
+    async def pull_request_files(self, owner: str, name: str, number: int, page: int = 1, per_page: int = 30) -> list[dict[str, Any]]:
+        return await self.client.request("GET", f"/repos/{owner}/{name}/pulls/{number}/files", params={"page": page, "per_page": min(per_page, 100)})
+
+    async def pull_request_commits(self, owner: str, name: str, number: int, page: int = 1, per_page: int = 30) -> list[dict[str, Any]]:
+        return await self.client.request("GET", f"/repos/{owner}/{name}/pulls/{number}/commits", params={"page": page, "per_page": min(per_page, 100)})
+
+    async def pull_request_reviews(self, owner: str, name: str, number: int, page: int = 1, per_page: int = 30) -> list[dict[str, Any]]:
+        return await self.client.request("GET", f"/repos/{owner}/{name}/pulls/{number}/reviews", params={"page": page, "per_page": min(per_page, 100)})
+
+    async def request_reviewers(self, owner: str, name: str, number: int, reviewers: list[str] | None = None, team_reviewers: list[str] | None = None) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        if reviewers:
+            payload["reviewers"] = reviewers
+        if team_reviewers:
+            payload["team_reviewers"] = team_reviewers
+        return await self.client.request("POST", f"/repos/{owner}/{name}/pulls/{number}/requested_reviewers", json=payload)
+
+    async def requested_reviewers(self, owner: str, name: str, number: int) -> dict[str, Any]:
+        return await self.client.request("GET", f"/repos/{owner}/{name}/pulls/{number}/requested_reviewers")
+
+    async def submit_review(self, owner: str, name: str, number: int, event: str, body: str = "") -> dict[str, Any]:
+        payload = {"event": event}
+        if body:
+            payload["body"] = body
+        return await self.client.request("POST", f"/repos/{owner}/{name}/pulls/{number}/reviews", json=payload)
+
     async def workflows(self, owner: str, name: str) -> dict[str, Any]:
         return await self.client.request("GET", f"/repos/{owner}/{name}/actions/workflows")
 
