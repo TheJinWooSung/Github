@@ -8,6 +8,9 @@ REPOSITORIES = "Repositories"
 SEARCH = "Search"
 STARRED = "Starred"
 SETTINGS = "Settings"
+CONNECT = "Connect GitHub"
+INTEGRATIONS = "Integrations"
+CONNECT_HINT = "Authorize GitHub to manage your repositories from Telegram."
 BACK = "Back"
 HOME = "Home"
 FILES = "Files"
@@ -51,8 +54,17 @@ class CommitView:
 def _row(*items):
     return [InlineKeyboardButton(label, callback_data=data) for label, data in items]
 
-def start():
-    return InlineKeyboardMarkup([_row((REPOSITORIES, "home:repos"), (SEARCH, "home:search")), _row((STARRED, "home:starred"), (SETTINGS, "home:settings"))])
+def start(connect_url: str | None = None):
+    rows = [_row((REPOSITORIES, "home:repos"), (SEARCH, "home:search")), _row((STARRED, "home:starred"), (SETTINGS, "home:settings"))]
+    if connect_url:
+        rows.insert(0, [InlineKeyboardButton(CONNECT, url=connect_url)])
+    return InlineKeyboardMarkup(rows)
+
+def integrations():
+    return InlineKeyboardMarkup([_row((INTEGRATIONS, "integrations:list")), _row((CONNECT, "connect:start"))])
+
+def connect_text():
+    return f"<b>{CONNECT}</b>\n\n{CONNECT_HINT}"
 
 def repository(repository_id: int):
     return InlineKeyboardMarkup([_row((FILES, f"repo:{repository_id}:files"), (COMMITS, f"repo:{repository_id}:commits")), _row((BRANCHES, f"repo:{repository_id}:branches"), (TAGS, f"repo:{repository_id}:tags")), _row((PULL_REQUESTS, f"repo:{repository_id}:pulls"), (ISSUES, f"repo:{repository_id}:issues")), _row((ACTIONS, f"repo:{repository_id}:actions"), (RELEASES, f"repo:{repository_id}:releases")), _row((CONTRIBUTORS, f"repo:{repository_id}:contributors"), (DEPLOYMENTS, f"repo:{repository_id}:deployments")), _row((HOME, "nav:home"))])
