@@ -109,6 +109,7 @@ ACTION_DISPATCHED = "Workflow dispatch requested."
 ACTION_RERUNNED = "Workflow rerun requested."
 ACTION_CANCELLED = "Workflow run cancelled."
 ACTION_LOGS = "Logs"\nACTION_STEPS = "Steps"
+ACTION_REFRESH = "Refresh"
 ACTION_ERROR = "Actions request failed."
 ACTION_CONNECT_REQUIRED = "Connect GitHub first with /connect."
 ACTION_NOT_FOUND = "The requested Actions resource was not found."
@@ -383,6 +384,7 @@ def action_runs(items, repository_id: int):
 def action_run_view(repository_id: int, run_id: int, status: str, conclusion: str | None):
     active = status in {"queued", "in_progress", "waiting", "requested", "pending"}
     rows = [
+        _row((ACTION_REFRESH, f"run:{repository_id}:{run_id}:refresh")),
         _row((ACTION_JOBS, f"run:{repository_id}:{run_id}:jobs"), (ACTION_ARTIFACTS, f"run:{repository_id}:{run_id}:artifacts")),
         _row((ACTION_RERUN_FAILED, f"run:{repository_id}:{run_id}:rerun_failed"), (ACTION_RERUN, f"run:{repository_id}:{run_id}:rerun")),
     ]
