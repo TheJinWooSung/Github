@@ -108,7 +108,7 @@ ACTION_ARTIFACTS_EMPTY = "No artifacts found."
 ACTION_DISPATCHED = "Workflow dispatch requested."
 ACTION_RERUNNED = "Workflow rerun requested."
 ACTION_CANCELLED = "Workflow run cancelled."
-ACTION_LOGS = "Logs"
+ACTION_LOGS = "Logs"\nACTION_STEPS = "Steps"
 ACTION_ERROR = "Actions request failed."
 ACTION_CONNECT_REQUIRED = "Connect GitHub first with /connect."
 ACTION_NOT_FOUND = "The requested Actions resource was not found."
@@ -403,7 +403,7 @@ def action_jobs(items, repository_id: int, run_id: int):
 
 def action_job_view(repository_id: int, run_id: int, job_id: int):
     return InlineKeyboardMarkup([
-        _row((ACTION_LOGS, f"job:{repository_id}:{run_id}:{job_id}:logs")),
+        _row((ACTION_STEPS, f"job:{repository_id}:{run_id}:{job_id}:steps"), (ACTION_LOGS, f"job:{repository_id}:{run_id}:{job_id}:logs")),
         _row((ACTION_BACK, f"run:{repository_id}:{run_id}:jobs")),
     ])
 
