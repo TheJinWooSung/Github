@@ -52,5 +52,27 @@ class GitHubClient:
     async def request_text(self, method: str, path: str, **kwargs: Any) -> str:
         return await self._request(method, path, text=True, **kwargs)
 
+    async def graphql(self, query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
+        if not self.token:
+            raise RuntimeError("GitHub authentication token is not configured")
+        payload = {"query": query}
+        if variables:
+            payload["variables"] = variables
+        async with self._lock:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post("https://api.github.com/graphql", headers=self.headers(), json=payload)
+        if response.status_code >= 400:
+            try:
+                data = response.json()
+                message = data.get("message", response.text) if isinstance(data, dict) else response.text
+            except ValueError:
+                message = response.text
+            raise RuntimeError(f"GitHub GraphQL error {response.status_code}: {message}")
+        data = response.json()
+        if data.get("errors"):
+            messages = "; ".join(str(item.get("message", "GraphQL error")) for item in data["errors"])
+            raise RuntimeError(messages)
+        return data.get("data") or {}
+
     async def close(self):
         return None
