@@ -410,7 +410,7 @@ def action_artifacts(items, repository_id: int, run_id: int | None = None):
     for item in items[:20]:
         name = escape(item.get("name", "artifact"))[:52]
         artifact_id = item.get("id")
-        rows.append(_row((f"{name} · {item.get('size_in_bytes', 0)} bytes", f"artifact:{repository_id}:{artifact_id}")))
+        rows.append(_row((f"{name} · {item.get('size_in_bytes', 0)} bytes", f"artifact:{repository_id}:{run_id}:{artifact_id}" if run_id else f"artifact:{repository_id}:{artifact_id}")))
     target = f"run:{repository_id}:{run_id}" if run_id else f"repo:{repository_id}:actions"
     rows.append(_row((ACTION_BACK, target)))
     return InlineKeyboardMarkup(rows)
