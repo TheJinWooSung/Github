@@ -287,12 +287,55 @@ def register(app, store: GitHubStore, oauth):
         service, repo = await require_repo(message)
         if not service:
             return
-        if len(message.command) < 2:
-            await message.reply_text("Use /branch branch-name.")
-            return
         owner, name = repo_parts(repo)
+        args = message.command[1:]
         try:
-            item = await service.branch(owner, name, message.command[1])
+            if not args:
+                items = await service.branches(owner, name)
+                lines = [f"<b>{escape(repo['full_name'])}</b>"]
+                lines.extend(f"\n<code>{escape(item.get('name', 'branch'))}</code>" for item in items[:40])
+                await message.reply_text("".join(lines))
+                return
+            action = args[0].lower()
+            if action == "create":
+                if len(args) < 2:
+                    await message.reply_text("Use /branch create name [from].")
+                    return
+                branch_name = args[1]
+                source = args[2] if len(args) > 2 else repo.get("default_branch", "main")
+                source_ref = await service.ref(owner, name, f"heads/{source}")
+                await service.create_branch(owner, name, branch_name, source_ref["object"]["sha"])
+                await message.reply_text(f"<b>Branch created.</b>\n\n<code>{escape(branch_name)}</code> ← <code>{escape(source)}</code>")
+                return
+            if action == "delete":
+                if len(args) < 2:
+                    await message.reply_text("Use /branch delete name.")
+                    return
+                branch_name = args[1]
+                if branch_name == repo.get("default_branch"):
+                    await message.reply_text("<b>The default branch cannot be deleted here.</b>")
+                    return
+                await service.delete_branch(owner, name, branch_name)
+                await message.reply_text(f"<b>Branch deleted.</b>\n\n<code>{escape(branch_name)}</code>")
+                return
+            if action == "rename":
+                if len(args) < 3:
+                    await message.reply_text("Use /branch rename old new.")
+                    return
+                old, new = args[1], args[2]
+                source_ref = await service.ref(owner, name, f"heads/{old}")
+                await service.create_branch(owner, name, new, source_ref["object"]["sha"])
+                try:
+                    await service.delete_branch(owner, name, old)
+                except Exception:
+                    try:
+                        await service.delete_branch(owner, name, new)
+                    except Exception:
+                        pass
+                    raise
+                await message.reply_text(f"<b>Branch renamed.</b>\n\n<code>{escape(old)}</code> → <code>{escape(new)}</code>")
+                return
+            item = await service.branch(owner, name, args[0])
             commit = item.get("commit", {})
             await message.reply_text(f"<b>{escape(item.get('name', 'branch'))}</b>\n\n<code>{escape(commit.get('sha', '')[:12])}</code>\n{escape(commit.get('commit', {}).get('message', ''))}")
         except Exception as exc:
