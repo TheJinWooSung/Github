@@ -17,7 +17,7 @@ class GitHubClient:
         headers = {
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {self.token}",
-            "X-GitHub-Api-Version": API_VERSION,
+            "X-GitHub-Api-Version": self.api_version,
             "User-Agent": "GitHub-for-Telegram",
         }
         if extra:
@@ -61,8 +61,8 @@ class GitHubClient:
         if variables:
             payload["variables"] = variables
         async with self._lock:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post("https://api.github.com/graphql", headers=self.headers(), json=payload)
+            async with httpx.AsyncClient(base_url=self.base_url, timeout=self.timeout) as client:
+                response = await client.post("/graphql", headers=self.headers(), json=payload)
         if response.status_code >= 400:
             try:
                 data = response.json()
