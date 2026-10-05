@@ -8,6 +8,9 @@ class RepositoryService:
     async def get(self, owner: str, name: str) -> dict[str, Any]:
         return await self.client.request("GET", f"/repos/{owner}/{name}")
 
+    async def get_by_id(self, repository_id: int) -> dict[str, Any]:
+        return await self.client.request("GET", f"/repositories/{repository_id}")
+
     async def list_for_user(self, username: str | None = None, page: int = 1, per_page: int = 30) -> list[dict[str, Any]]:
         path = f"/users/{username}/repos" if username else "/user/repos"
         return await self.client.request("GET", path, params={"page": page, "per_page": min(per_page, 100), "sort": "updated"})
@@ -60,6 +63,13 @@ class RepositoryService:
         if not isinstance(result, dict):
             raise ValueError("Requested path is not a file")
         return result
+
+    async def blob(self, owner: str, name: str, sha: str) -> dict[str, Any]:
+        return await self.client.request("GET", f"/repos/{owner}/{name}/git/blobs/{sha}")
+
+    async def branch_head(self, owner: str, name: str, branch: str) -> str:
+        result = await self.ref(owner, name, f"heads/{branch}")
+        return result["object"]["sha"]
 
     async def tree(self, owner: str, name: str, tree_sha: str, recursive: bool = True) -> dict[str, Any]:
         suffix = "?recursive=1" if recursive else ""
