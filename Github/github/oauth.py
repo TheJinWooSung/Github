@@ -23,7 +23,7 @@ class GitHubOAuth:
         state = secrets.token_urlsafe(32)
         verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode()
         challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
-        query = urlencode({"client_id": self.client_id, "redirect_uri": self.redirect_uri, "state": state, "code_challenge": challenge, "code_challenge_method": "S256", "scope": "repo read:user user:email", "prompt": "select_account"})
+        query = urlencode({"client_id": self.client_id, "redirect_uri": self.redirect_uri, "state": state, "code_challenge": challenge, "code_challenge_method": "S256", "scope": "repo read:user user:email offline_access", "prompt": "select_account"})
         return state, f"https://github.com/login/oauth/authorize?{query}", verifier
 
     async def exchange(self, code: str, verifier: str) -> OAuthGrant:
@@ -43,3 +43,14 @@ class GitHubOAuth:
             response = await client.get("https://api.github.com/user", headers=headers)
             response.raise_for_status()
             return response.json()
+
+    async def refresh(self, refresh_token: str) -> OAuthGrant:
+        payload = {"client_id": self.client_id, "client_secret": self.client_secret, "grant_type": "refresh_token", "refresh_token": refresh_token}
+        headers = {"Accept": "application/json", "X-GitHub-Api-Version": "2026-03-10"}
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post("https://github.com/login/oauth/access_token", data=payload, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+        if not data.get("access_token"):
+            raise RuntimeError(data.get("error_description") or data.get("error") or "GitHub token refresh failed")
+        return OAuthGrant(data["access_token"], data.get("refresh_token"), data.get("expires_in"), data.get("refresh_token_expires_in"), data.get("scope", ""))
