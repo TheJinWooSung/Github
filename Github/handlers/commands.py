@@ -133,6 +133,12 @@ def register(app, store: GitHubStore, oauth):
         if not user or not user.get("access_token"):
             await message.reply_text(AUTH_REQUIRED)
             return
+        try:
+            token = await store.token(message.from_user.id, oauth)
+            if token:
+                await oauth.revoke(token)
+        except Exception:
+            pass
         await store.disconnect_user(message.from_user.id)
         await message.reply_text("<b>GitHub disconnected.</b>")
 
