@@ -143,6 +143,30 @@ def register(app, store: GitHubStore, oauth):
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)))
 
+    @app.on_callback_query(filters.regex(r"^run:\d+:\d+:refresh$"))
+    async def run_refresh(client, query):
+        await query.answer()
+        _, repository_id, run_id, _ = query.data.split(":")
+        repository_id, run_id = int(repository_id), int(run_id)
+        service = await service_for(query.from_user.id)
+        if not service:
+            await query.message.edit_text(error_message(ACTION_CONNECT_REQUIRED))
+            return
+        try:
+            _, owner, name = await repository(service, repository_id)
+            item = await service.workflow_run(owner, name, run_id)
+            await query.message.edit_text(
+                run_text(item),
+                reply_markup=action_run_view(
+                    repository_id,
+                    run_id,
+                    item.get("status", ""),
+                    item.get("conclusion"),
+                ),
+            )
+        except Exception as exc:
+            await query.message.edit_text(error_message(str(exc)))
+
     @app.on_callback_query(filters.regex(r"^run:\d+:\d+:(jobs|artifacts)$"))
     async def run_data(client, query):
         await query.answer()
