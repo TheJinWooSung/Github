@@ -71,7 +71,7 @@ def start(connect_url: str | None = None):
 def integrations(items):
     rows = []
     for item in items[:50]:
-        rows.append(_row((item["full_name"][:55], f"integration:{item["repository_id"]}:delete")))
+        rows.append(_row((item["full_name"][:55], f"integration:{item['repository_id']}:delete")))
     rows.append(_row((CONNECT, "connect:start")))
     return InlineKeyboardMarkup(rows)
 
