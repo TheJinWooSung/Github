@@ -55,6 +55,11 @@ INTEGRATION_REMOVED = "Repository integration removed."
 INTEGRATION_NOT_FOUND = "Repository integration was not found."
 INTEGRATIONS_EMPTY = "No repository integrations are configured."
 INTEGRATION_LIST = "Repository integrations"
+INTEGRATION_EVENTS = "Webhook events"
+INTEGRATION_ACTIVE = "Webhook active"
+INTEGRATION_ON = "On"
+INTEGRATION_OFF = "Off"
+WEBHOOK_EVENTS = ("push", "pull_request", "issues", "issue_comment", "pull_request_review", "release", "workflow_run", "workflow_job", "deployment", "deployment_status", "star", "fork", "create", "delete")
 
 PR_LIST = "Pull requests"
 PR_FILES = "Files"
@@ -125,9 +130,23 @@ def start(connect_url: str | None = None):
 def integrations(items):
     rows = []
     for item in items[:50]:
-        rows.append(_row((item["full_name"][:55], f"integration:{item['repository_id']}:delete")))
+        rows.append(_row((item["full_name"][:42], f"integration:{item['repository_id']}:events"), ("Remove", f"integration:{item['repository_id']}:delete")))
     rows.append(_row((CONNECT, "connect:start")))
     return InlineKeyboardMarkup(rows)
+
+def integration_events(repository_id: int, events: list[str], active: bool = True):
+    rows = []
+    for event in WEBHOOK_EVENTS:
+        state = INTEGRATION_ON if event in events else INTEGRATION_OFF
+        rows.append(_row((f"{event} · {state}", f"integration:{repository_id}:toggle:{event}")))
+    rows.append(_row((f"{INTEGRATION_ACTIVE}: {INTEGRATION_ON if active else INTEGRATION_OFF}", f"integration:{repository_id}:active")))
+    rows.append(_row((BACK, "integrations:list")))
+    return InlineKeyboardMarkup(rows)
+
+def integration_events_text(full_name: str, events: list[str], active: bool):
+    selected = ", ".join(events) if events else "none"
+    state = INTEGRATION_ON if active else INTEGRATION_OFF
+    return f"<b>{INTEGRATION_EVENTS}</b>\n\n<code>{escape(full_name)}</code>\n{INTEGRATION_ACTIVE}: <b>{state}</b>\n\n<code>{escape(selected)}</code>"
 
 def connect_text():
     return f"<b>{CONNECT}</b>\n\n{CONNECT_HINT}"
