@@ -29,6 +29,16 @@ class EditSession:
     expires_at: float = 0.0
 
 @dataclass
+class ReviewSession:
+    user_id: int
+    chat_id: int
+    repository_id: int
+    owner: str
+    name: str
+    number: int
+    event: str
+    expires_at: float = 0.0
+
 class BrowserSession:
     user_id: int
     chat_id: int
@@ -58,6 +68,8 @@ class SessionStore:
             await self.redis.setex(self._key(token), self.ttl, json.dumps(asdict(session)))
             if isinstance(session, EditSession):
                 await self.redis.setex(f"github:active:{session.user_id}", self.ttl, token)
+            if isinstance(session, ReviewSession):
+                await self.redis.setex(f"github:review:{session.user_id}", self.ttl, token)
             return
         async with self.lock:
             self.memory[token] = session
@@ -70,6 +82,8 @@ class SessionStore:
             payload = json.loads(value)
             if "verifier" in payload:
                 return OAuthState(**payload)
+            if "event" in payload and "number" in payload and "owner" in payload:
+                return ReviewSession(**payload)
             if "parent_token" in payload:
                 return BrowserSession(**payload)
             return EditSession(**payload)
@@ -101,13 +115,33 @@ class SessionStore:
         session = await self.get(token)
         if self.redis:
             await self.redis.delete(self._key(token))
-            if isinstance(session, EditSession):
-                key = f"github:active:{session.user_id}"
+            if isinstance(session, (EditSession, ReviewSession)):
+                key = f"github:active:{session.user_id}" if isinstance(session, EditSession) else f"github:review:{session.user_id}"
                 if await self.redis.get(key) == token:
                     await self.redis.delete(key)
             return
         async with self.lock:
             self.memory.pop(token, None)
+
+    async def review(self, user_id: int) -> str | None:
+        if self.redis:
+            token = await self.redis.get(f"github:review:{user_id}")
+            if token and await self.get(token):
+                return token
+            if token:
+                await self.redis.delete(f"github:review:{user_id}")
+            return None
+        async with self.lock:
+            for token, session in self.memory.items():
+                if isinstance(session, ReviewSession) and session.user_id == user_id and session.expires_at > time.time():
+                    return token
+            return None
+
+    async def create_review(self, session: ReviewSession):
+        token = secrets.token_urlsafe(18)
+        session.expires_at = time.time() + self.ttl
+        await self.set(token, session)
+        return token
 
     async def close(self) -> None:
         if self.redis:
