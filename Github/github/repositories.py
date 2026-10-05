@@ -150,7 +150,7 @@ class RepositoryService:
         return await self.client.request("POST", f"/repos/{owner}/{name}/pulls", json={"title": title, "head": head, "base": base, "body": body, "draft": draft})
 
     async def update_pull_request(self, owner: str, name: str, number: int, **fields: Any) -> dict[str, Any]:
-        allowed = {"title", "body", "state", "base", "maintainer_can_modify"}
+        allowed = {"title", "body", "state", "base", "maintainer_can_modify", "draft"}
         payload = {key: value for key, value in fields.items() if key in allowed and value is not None}
         return await self.client.request("PATCH", f"/repos/{owner}/{name}/pulls/{number}", json=payload)
 
@@ -168,6 +168,12 @@ class RepositoryService:
 
     async def pull_request_reviews(self, owner: str, name: str, number: int, page: int = 1, per_page: int = 30) -> list[dict[str, Any]]:
         return await self.client.request("GET", f"/repos/{owner}/{name}/pulls/{number}/reviews", params={"page": page, "per_page": min(per_page, 100)})
+
+    async def mergeable_pull_request(self, owner: str, name: str, number: int) -> dict[str, Any]:
+        return await self.client.request("GET", f"/repos/{owner}/{name}/pulls/{number}")
+
+    async def pull_request_diff(self, owner: str, name: str, number: int) -> str:
+        return await self.client.request_text("GET", f"/repos/{owner}/{name}/pulls/{number}", headers={"Accept": "application/vnd.github.diff"})
 
     async def request_reviewers(self, owner: str, name: str, number: int, reviewers: list[str] | None = None, team_reviewers: list[str] | None = None) -> dict[str, Any]:
         payload: dict[str, Any] = {}
