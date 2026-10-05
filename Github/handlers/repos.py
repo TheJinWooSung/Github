@@ -1,7 +1,8 @@
 from pyrogram import filters
-from ..buttons import repositories, repository, back, repository_list, repo_home, error_message, FILES, BRANCHES, files, files_text
+from ..buttons import repositories, repository, back, repository_list, repo_home, error_message, BRANCHES, files, files_text
+from ..state import BrowserSession, SessionStore
 
-def register(app, service):
+def register(app, service, sessions: SessionStore):
     @app.on_message(filters.command("repos"))
     async def handle_repositories(client, message):
         try:
@@ -24,11 +25,13 @@ def register(app, service):
             branch = repo.get("default_branch", "main")
             if parts[2] == "files":
                 items = await service.contents(owner, name, "", branch)
-                await query.message.edit_text(files_text(owner, name, branch, "", items), reply_markup=files(items, repository_id))
+                browser = BrowserSession(query.from_user.id, query.message.chat.id, repository_id, owner, name, branch, "")
+                token = await sessions.create(browser)
+                await query.message.edit_text(files_text(owner, name, branch, "", items), reply_markup=files(items, token))
                 return
             if parts[2] == "branches":
                 items = await service.branches(owner, name)
-                body = f"<b>{BRANCHES}</b>\\n\\n" + "\\n".join(f"<code>{item.get('name', 'branch')}</code>" for item in items[:30])
+                body = f"<b>{BRANCHES}</b>\n\n" + "\n".join(f"<code>{item.get('name', 'branch')}</code>" for item in items[:30])
                 await query.message.edit_text(body, reply_markup=back(f"repo:{repository_id}"))
                 return
         if data.count(":") == 1:
