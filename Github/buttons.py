@@ -62,6 +62,7 @@ INTEGRATION_OFF = "Off"
 INTEGRATION_DELIVERIES = "Deliveries"
 DELIVERY_LIST = "Webhook deliveries"
 DELIVERY_RETRY = "Retry"
+DELIVERY_REFRESH = "Refresh"
 DELIVERY_BACK = "Webhook events"
 WEBHOOK_EVENTS = ("push", "pull_request", "issues", "issue_comment", "pull_request_review", "release", "workflow_run", "workflow_job", "deployment", "deployment_status", "star", "fork", "create", "delete")
 
@@ -153,6 +154,7 @@ def integration_deliveries(items, repository_id: int):
         delivery = str(item.get("delivery_id", ""))[:12]
         label = f"{item.get('event', 'event')} · {item.get('status', 'unknown')} · {delivery}"
         rows.append(_row((label[:60], f"delivery:{repository_id}:{item.get('delivery_id', '')}")))
+    rows.append(_row((DELIVERY_REFRESH, f"integration:{repository_id}:deliveries:refresh")))
     rows.append(_row((BACK, f"integration:{repository_id}:events")))
     return InlineKeyboardMarkup(rows)
 
