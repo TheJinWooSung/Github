@@ -1,0 +1,44 @@
+from datetime import datetime, timezone
+from motor.motor_asyncio import AsyncIOMotorClient
+from cryptography.fernet import Fernet
+
+class GitHubStore:
+    def __init__(self, mongo_uri: str, encryption_key: str):
+        self.client = AsyncIOMotorClient(mongo_uri)
+        self.db = self.client.get_default_database() or self.client["github"]
+        self.users = self.db["github_users"]
+        self.integrations = self.db["github_integrations"]
+        self.cipher = Fernet(encryption_key.encode())
+
+    async def setup(self):
+        await self.users.create_index("telegram_id", unique=True)
+        await self.users.create_index("github_id", unique=True)
+        await self.integrations.create_index([("telegram_id", 1), ("repository_id", 1)], unique=True)
+
+    async def save_user(self, telegram_id: int, profile: dict, grant) -> None:
+        now = datetime.now(timezone.utc)
+        update = {"telegram_id": telegram_id, "github_id": profile["id"], "login": profile["login"], "avatar_url": profile.get("avatar_url"), "access_token": self.cipher.encrypt(grant.access_token.encode()).decode(), "refresh_token": self.cipher.encrypt(grant.refresh_token.encode()).decode() if grant.refresh_token else None, "expires_in": grant.expires_in, "refresh_token_expires_in": grant.refresh_token_expires_in, "scope": grant.scope, "updated_at": now}
+        await self.users.update_one({"telegram_id": telegram_id}, {"$set": update, "$setOnInsert": {"created_at": now}}, upsert=True)
+
+    async def get_user(self, telegram_id: int):
+        return await self.users.find_one({"telegram_id": telegram_id})
+
+    async def token(self, telegram_id: int) -> str | None:
+        user = await self.get_user(telegram_id)
+        if not user or not user.get("access_token"):
+            return None
+        return self.cipher.decrypt(user["access_token"].encode()).decode()
+
+    async def add_integration(self, telegram_id: int, repo: dict) -> None:
+        now = datetime.now(timezone.utc)
+        await self.integrations.update_one({"telegram_id": telegram_id, "repository_id": repo["id"]}, {"$set": {"repository_id": repo["id"], "full_name": repo["full_name"], "owner": repo["owner"]["login"], "name": repo["name"], "private": repo.get("private", False), "updated_at": now}, "$setOnInsert": {"created_at": now}}, upsert=True)
+
+    async def list_integrations(self, telegram_id: int):
+        return await self.integrations.find({"telegram_id": telegram_id}).sort("full_name", 1).to_list(length=100)
+
+    async def delete_integration(self, telegram_id: int, repository_id: int) -> bool:
+        result = await self.integrations.delete_one({"telegram_id": telegram_id, "repository_id": repository_id})
+        return result.deleted_count == 1
+
+    async def close(self):
+        self.client.close()
