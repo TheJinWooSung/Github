@@ -130,6 +130,15 @@ class RepositoryService:
     async def issue_comment(self, owner: str, name: str, number: int, body: str):
         return await self.client.request("POST", f"/repos/{owner}/{name}/issues/{number}/comments", json={"body": body})
 
+    async def create_webhook(self, owner: str, name: str, url: str, secret: str, events: list[str]):
+        return await self.client.request("POST", f"/repos/{owner}/{name}/hooks", json={"name": "web", "active": True, "events": events, "config": {"url": url, "content_type": "json", "secret": secret, "insecure_ssl": "0"}})
+
+    async def delete_webhook(self, owner: str, name: str, hook_id: int):
+        return await self.client.request("DELETE", f"/repos/{owner}/{name}/hooks/{hook_id}")
+
+    async def issue_comment(self, owner: str, name: str, number: int, body: str):
+        return await self.client.request("POST", f"/repos/{owner}/{name}/issues/{number}/comments", json={"body": body})
+
     async def issues(self, owner: str, name: str, state: str = "open", page: int = 1, per_page: int = 30) -> list[dict[str, Any]]:
         return await self.client.request("GET", f"/repos/{owner}/{name}/issues", params={"state": state, "page": page, "per_page": min(per_page, 100)})
 
