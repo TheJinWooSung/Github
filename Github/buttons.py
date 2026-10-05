@@ -75,6 +75,26 @@ PR_REVIEWED = "Review submitted."
 PR_EMPTY = "No pull requests found."
 PR_ERROR = "Pull request action failed."
 
+ACTIONS_TITLE = "GitHub Actions"
+ACTION_WORKFLOWS = "Workflows"
+ACTION_RUNS = "Runs"
+ACTION_JOBS = "Jobs"
+ACTION_ARTIFACTS = "Artifacts"
+ACTION_RUN = "Run workflow"
+ACTION_RERUN = "Rerun"
+ACTION_RERUN_FAILED = "Rerun failed"
+ACTION_CANCEL = "Cancel run"
+ACTION_BACK = "Repository"
+ACTIONS_EMPTY = "No Actions workflows found."
+ACTION_RUNS_EMPTY = "No workflow runs found."
+ACTION_JOBS_EMPTY = "No jobs found."
+ACTION_ARTIFACTS_EMPTY = "No artifacts found."
+ACTION_DISPATCHED = "Workflow dispatch requested."
+ACTION_RERUNNED = "Workflow rerun requested."
+ACTION_CANCELLED = "Workflow run cancelled."
+ACTION_LOGS = "Logs"
+ACTION_ERROR = "Actions request failed."
+
 @dataclass(frozen=True)
 class CommitView:
     repository: str
@@ -272,3 +292,96 @@ def pull_request_reviews_text(items):
 
 def pull_request_list_text(repository: str):
     return f"<b>{escape(repository)}</b>\n\n{PR_LIST}"
+
+
+def actions_home(repository_id: int):
+    return InlineKeyboardMarkup([
+        _row((ACTION_WORKFLOWS, f"actions:{repository_id}:workflows"), (ACTION_RUNS, f"actions:{repository_id}:runs")),
+        _row((ACTION_ARTIFACTS, f"actions:{repository_id}:artifacts")),
+        _row((ACTION_BACK, f"repo:{repository_id}")),
+    ])
+
+def action_workflows(items, repository_id: int):
+    rows = []
+    for item in items[:20]:
+        workflow_id = item.get("id")
+        name = escape(item.get("name", item.get("path", "workflow")))[:48]
+        state = escape(item.get("state", "unknown"))
+        rows.append(_row((f"{name} · {state}", f"workflow:{repository_id}:{workflow_id}")))
+    rows.append(_row((ACTION_BACK, f"repo:{repository_id}:actions")))
+    return InlineKeyboardMarkup(rows)
+
+def action_runs(items, repository_id: int):
+    rows = []
+    for item in items[:20]:
+        run_id = item.get("id")
+        name = escape(item.get("name", "workflow"))[:34]
+        status = escape(item.get("conclusion") or item.get("status", "unknown"))
+        rows.append(_row((f"{name} · {status}", f"run:{repository_id}:{run_id}")))
+    rows.append(_row((ACTION_BACK, f"repo:{repository_id}:actions")))
+    return InlineKeyboardMarkup(rows)
+
+def action_run_view(repository_id: int, run_id: int, status: str, conclusion: str | None):
+    active = status in {"queued", "in_progress", "waiting", "requested", "pending"}
+    rows = [
+        _row((ACTION_JOBS, f"run:{repository_id}:{run_id}:jobs"), (ACTION_ARTIFACTS, f"run:{repository_id}:{run_id}:artifacts")),
+        _row((ACTION_RERUN_FAILED, f"run:{repository_id}:{run_id}:rerun_failed"), (ACTION_RERUN, f"run:{repository_id}:{run_id}:rerun")),
+    ]
+    if active:
+        rows.append(_row((ACTION_CANCEL, f"run:{repository_id}:{run_id}:cancel")))
+    rows.append(_row((ACTION_BACK, f"repo:{repository_id}:actions")))
+    return InlineKeyboardMarkup(rows)
+
+def action_jobs(items, repository_id: int, run_id: int):
+    rows = []
+    for item in items[:20]:
+        job_id = item.get("id")
+        name = escape(item.get("name", "job"))[:52]
+        status = escape(item.get("conclusion") or item.get("status", "unknown"))
+        rows.append(_row((f"{name} · {status}", f"job:{repository_id}:{run_id}:{job_id}")))
+    rows.append(_row((ACTION_BACK, f"run:{repository_id}:{run_id}")))
+    return InlineKeyboardMarkup(rows)
+
+def action_job_view(repository_id: int, run_id: int, job_id: int):
+    return InlineKeyboardMarkup([
+        _row((ACTION_LOGS, f"job:{repository_id}:{run_id}:{job_id}:logs")),
+        _row((ACTION_BACK, f"run:{repository_id}:{run_id}:jobs")),
+    ])
+
+def action_artifacts(items, repository_id: int, run_id: int | None = None):
+    rows = []
+    for item in items[:20]:
+        name = escape(item.get("name", "artifact"))[:52]
+        artifact_id = item.get("id")
+        rows.append(_row((f"{name} · {item.get('size_in_bytes', 0)} bytes", f"artifact:{repository_id}:{artifact_id}")))
+    target = f"run:{repository_id}:{run_id}" if run_id else f"repo:{repository_id}:actions"
+    rows.append(_row((ACTION_BACK, target)))
+    return InlineKeyboardMarkup(rows)
+
+def actions_text(repository: str):
+    return f"<b>{escape(repository)}</b>\n\n{ACTIONS_TITLE}"
+
+def workflow_text(item: dict):
+    return f"<b>{escape(item.get('name', 'Workflow'))}</b>\n\n<code>{escape(item.get('state', 'unknown'))}</code>\n<code>{escape(item.get('path', ''))}</code>"
+
+def run_text(item: dict):
+    name = escape(item.get('name', 'Workflow run'))
+    status = escape(item.get('conclusion') or item.get('status', 'unknown'))
+    branch = escape(item.get('head_branch') or '-')
+    actor = escape(item.get('actor', {}).get('login', 'unknown'))
+    sha = escape(item.get('head_sha', '')[:10])
+    return f"<b>{name}</b>\n\n<code>{status}</code> · <code>{branch}</code>\nby <code>{actor}</code>\n<code>{sha}</code>"
+
+def job_text(item: dict):
+    name = escape(item.get('name', 'Job'))
+    status = escape(item.get('conclusion') or item.get('status', 'unknown'))
+    return f"<b>{name}</b>\n\n<code>{status}</code>"
+
+def artifact_text(item: dict):
+    name = escape(item.get('name', 'Artifact'))
+    size = item.get('size_in_bytes', 0)
+    expired = "expired" if item.get('expired') else "available"
+    return f"<b>{name}</b>\n\n<code>{size} bytes</code> · {expired}"
+
+def action_logs_text(name: str, content: str):
+    return f"<b>{escape(name)}</b>\n\n<pre>{escape(content[-3500:])}</pre>"
