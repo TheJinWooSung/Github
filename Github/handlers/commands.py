@@ -1,7 +1,7 @@
 from html import escape
 from pyrogram import filters
 
-from ..buttons import error_message
+from ..buttons import error_message, repositories as repository_buttons
 from ..github.client import GitHubClient
 from ..github.repositories import RepositoryService
 from ..storage import GitHubStore
