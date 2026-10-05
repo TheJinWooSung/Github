@@ -5,6 +5,9 @@ from ..buttons import (
     ACTION_CANCELLED,
     ACTION_DISPATCHED,
     ACTION_ERROR,
+    ACTION_CONNECT_REQUIRED,
+    ACTION_NOT_FOUND,
+    ACTION_RUN_REQUEST,
     ACTION_RERUNNED,
     ACTION_RUNS,
     ACTION_WORKFLOWS,
@@ -17,6 +20,7 @@ from ..buttons import (
     action_jobs,
     action_run_view,
     action_runs,
+    workflow_actions,
     action_workflows,
     actions_home,
     actions_text,
@@ -48,7 +52,7 @@ def register(app, store: GitHubStore, oauth):
         repository_id = int(query.data.split(":")[1])
         service = await service_for(query.from_user.id)
         if not service:
-            await query.message.edit_text(error_message("Connect GitHub first with /connect."))
+            await query.message.edit_text(error_message(ACTION_CONNECT_REQUIRED))
             return
         try:
             repo, _, _ = await repository(service, repository_id)
@@ -96,7 +100,7 @@ def register(app, store: GitHubStore, oauth):
             item = await service.workflow(owner, name, workflow_id)
             runs = (await service.workflow_runs_for(owner, name, workflow_id)).get("workflow_runs", [])
             text = workflow_text(item) + f"\n\n<b>{ACTION_RUNS}</b>  {len(runs)}"
-            await query.message.edit_text(text, reply_markup=action_runs(runs, repository_id))
+            await query.message.edit_text(text, reply_markup=workflow_actions(repository_id, workflow_id, runs))
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)))
 
@@ -113,6 +117,27 @@ def register(app, store: GitHubStore, oauth):
             _, owner, name = await repository(service, repository_id)
             item = await service.workflow_run(owner, name, run_id)
             await query.message.edit_text(run_text(item), reply_markup=action_run_view(repository_id, run_id, item.get("status", ""), item.get("conclusion")))
+        except Exception as exc:
+            await query.message.edit_text(error_message(str(exc)))
+
+    @app.on_callback_query(filters.regex(r"^workflow:\d+:\d+:run$"))
+    async def workflow_dispatch(client, query):
+        await query.answer()
+        _, repository_id, workflow_id, _ = query.data.split(":")
+        repository_id, workflow_id = int(repository_id), int(workflow_id)
+        service = await service_for(query.from_user.id)
+        if not service:
+            await query.message.edit_text(error_message(ACTION_CONNECT_REQUIRED))
+            return
+        try:
+            repo, owner, name = await repository(service, repository_id)
+            workflow = await service.workflow(owner, name, workflow_id)
+            ref = repo.get("default_branch") or "main"
+            await service.run_workflow(owner, name, workflow_id, ref)
+            await query.message.edit_text(
+                f"<b>{ACTION_RUN_REQUEST}</b>\n\n<code>{escape(workflow.get('name', 'workflow'))}</code> · <code>{escape(ref)}</code>",
+                reply_markup=workflow_actions(repository_id, workflow_id, []),
+            )
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)))
 
@@ -163,7 +188,7 @@ def register(app, store: GitHubStore, oauth):
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)))
 
-    @app.on_callback_query(filters.regex(r"^job:\d+:\d+$"))
+    @app.on_callback_query(filters.regex(r"^job:\d+:\d+:\d+$"))
     async def job_view(client, query):
         await query.answer()
         _, repository_id, run_id, job_id = query.data.split(":")
@@ -177,7 +202,7 @@ def register(app, store: GitHubStore, oauth):
             jobs = (await service.jobs(owner, name, run_id)).get("jobs", [])
             item = next((job for job in jobs if job.get("id") == job_id), None)
             if not item:
-                raise RuntimeError("Job not found")
+                raise RuntimeError(ACTION_NOT_FOUND)
             await query.message.edit_text(job_text(item), reply_markup=action_job_view(repository_id, run_id, job_id))
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)))
@@ -216,7 +241,7 @@ def register(app, store: GitHubStore, oauth):
             data = (await service.artifacts(owner, name)).get("artifacts", [])
             item = next((artifact for artifact in data if artifact.get("id") == artifact_id), None)
             if not item:
-                raise RuntimeError("Artifact not found")
+                raise RuntimeError(ACTION_NOT_FOUND)
             await query.message.edit_text(artifact_text(item), reply_markup=actions_home(repository_id))
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)))
