@@ -577,11 +577,13 @@ def register(app, store: GitHubStore, oauth):
             return
         owner, name = repo_parts(repo)
         try:
-            events = await service.client.request("GET", f"/repos/{owner}/{name}/events", params={"per_page": 25})
+            events = await service.client.request("GET", f"/repos/{owner}/{name}/activity", params={"per_page": 25, "direction": "desc"})
             lines = [f"<b>Activity · {escape(repo['full_name'])}</b>"]
             for event in events[:20]:
-                actor = escape(event.get("actor", {}).get("login", "unknown"))
-                lines.append(f"\n<code>{escape(event.get('type', 'event'))}</code> · {actor}")
+                actor = escape(event.get("pusher", {}).get("login", "unknown"))
+                ref = escape((event.get("ref") or "").removeprefix("refs/heads/"))
+                kind = escape(event.get("push_type") or "activity")
+                lines.append(f"\n<code>{kind}</code> · {actor} · {ref}")
             await message.reply_text("".join(lines) if events else "<b>No recent activity.</b>")
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
