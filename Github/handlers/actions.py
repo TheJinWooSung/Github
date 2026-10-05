@@ -12,6 +12,7 @@ from ..buttons import (
     ACTION_RUNS,
     ACTION_WORKFLOWS,
     ACTION_LOGS,
+    ACTION_STEPS,
     ACTION_JOBS_EMPTY,
     ACTION_ARTIFACTS_EMPTY,
     ACTION_RUNS_EMPTY,
@@ -205,6 +206,35 @@ def register(app, store: GitHubStore, oauth):
             if not item:
                 raise RuntimeError(ACTION_NOT_FOUND)
             await query.message.edit_text(job_text(item), reply_markup=action_job_view(repository_id, run_id, job_id))
+        except Exception as exc:
+            await query.message.edit_text(error_message(str(exc)))
+
+    @app.on_callback_query(filters.regex(r"^job:\d+:\d+:\d+:steps$"))
+    async def job_steps(client, query):
+        await query.answer()
+        _, repository_id, run_id, job_id, _ = query.data.split(":")
+        repository_id, run_id, job_id = int(repository_id), int(run_id), int(job_id)
+        service = await service_for(query.from_user.id)
+        if not service:
+            await query.message.edit_text(error_message(ACTION_CONNECT_REQUIRED))
+            return
+        try:
+            _, owner, name = await repository(service, repository_id)
+            jobs = (await service.jobs(owner, name, run_id)).get("jobs", [])
+            item = next((job for job in jobs if job.get("id") == job_id), None)
+            if not item:
+                raise RuntimeError(ACTION_NOT_FOUND)
+            steps = item.get("steps") or []
+            lines = [f"<b>{escape(item.get('name', ACTION_STEPS))}</b>", ""]
+            if not steps:
+                lines.append("No steps found.")
+            else:
+                for step in steps:
+                    status = step.get("conclusion") or step.get("status") or "unknown"
+                    number = step.get("number", "")
+                    name_text = escape(step.get("name", "step"))
+                    lines.append(f"<code>{number}</code> {name_text} · <code>{escape(status)}</code>")
+            await query.message.edit_text("\n".join(lines)[:3900], reply_markup=action_job_view(repository_id, run_id, job_id))
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)))
 
