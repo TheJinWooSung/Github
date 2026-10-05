@@ -105,8 +105,8 @@ def files(items, repository_id: int):
     rows.append(_row((BACK, f"repo:{repository_id}")))
     return InlineKeyboardMarkup(rows)
 
-def file_view(repository_id: int):
-    return InlineKeyboardMarkup([_row(("Edit", f"edit:{repository_id}")), _row((BACK, f"repo:{repository_id}:files"))])
+def file_view(repository_id: int, token: str):
+    return InlineKeyboardMarkup([_row(("Edit", f"edit:{token}")), _row((BACK, f"repo:{repository_id}:files"))])
 
 def files_text(owner: str, name: str, branch: str, path: str, items):
     title = f"<b>{escape(owner)}/{escape(name)}</b>  <code>{escape(branch)}</code>"
