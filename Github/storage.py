@@ -40,6 +40,17 @@ class GitHubStore:
             return grant.access_token
         return self.cipher.decrypt(user["access_token"].encode()).decode()
 
+    async def delivery_seen(self, delivery_id: str) -> bool:
+        if await self.db["github_deliveries"].find_one({"delivery_id": delivery_id}):
+            return True
+        return False
+
+    async def save_delivery(self, delivery_id: str, telegram_id: int, repository_id: int, event: str, number: int | None, message_id: int) -> None:
+        await self.db["github_deliveries"].update_one({"delivery_id": delivery_id, "telegram_id": telegram_id}, {"$set": {"delivery_id": delivery_id, "telegram_id": telegram_id, "repository_id": repository_id, "event": event, "number": number, "message_id": message_id}}, upsert=True)
+
+    async def integrations_for_repository(self, repository_id: int):
+        return await self.integrations.find({"repository_id": repository_id}).to_list(length=100)
+
     async def add_integration(self, telegram_id: int, repo: dict) -> None:
         now = datetime.now(timezone.utc)
         await self.integrations.update_one({"telegram_id": telegram_id, "repository_id": repo["id"]}, {"$set": {"repository_id": repo["id"], "full_name": repo["full_name"], "owner": repo["owner"]["login"], "name": repo["name"], "private": repo.get("private", False), "updated_at": now}, "$setOnInsert": {"created_at": now}}, upsert=True)
