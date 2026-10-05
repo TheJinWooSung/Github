@@ -23,13 +23,13 @@ from .web import build_web
 class GitHubBot:
     def __init__(self, config: Config):
         self.config = config
-        self.app = Client("github_control_center", api_id=config.api_id, api_hash=config.api_hash, bot_token=config.bot_token, in_memory=True)
-        self.github = GitHubClient("")
+        self.app = Client(config.bot_session_name, api_id=config.api_id, api_hash=config.api_hash, bot_token=config.bot_token, in_memory=True)
+        self.github = GitHubClient("", timeout=config.request_timeout, base_url=config.github_api_url, api_version=config.github_api_version)
         self.repositories = RepositoryService(self.github)
         self.sessions = SessionStore(config.redis_url)
         self.store = GitHubStore(config.mongo_uri, config.token_encryption_key)
-        self.auth = GitHubAppAuth(config.github_app_id, config.github_private_key)
-        self.oauth = GitHubOAuth(config.github_client_id, config.github_client_secret, f"{config.webhook_url}/oauth/callback")
+        self.auth = GitHubAppAuth(config.github_app_id, config.github_private_key, timeout=config.request_timeout, api_version=config.github_api_version, base_url=config.github_api_url)
+        self.oauth = GitHubOAuth(config.github_client_id, config.github_client_secret, f"{config.webhook_url}{config.oauth_callback_path}")
         self.web = build_web(self, self.oauth, self.sessions, self.store)
         self._auth_task: asyncio.Task | None = None
         self._registered = False
