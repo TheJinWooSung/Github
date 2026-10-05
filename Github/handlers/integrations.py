@@ -4,7 +4,7 @@ from ..github.client import GitHubClient
 from ..github.repositories import RepositoryService
 from ..storage import GitHubStore
 
-def register(app, store: GitHubStore, oauth):
+def register(app, store: GitHubStore, oauth, webhook_url: str, webhook_secret: str):
     @app.on_message(filters.command("newintegration"))
     async def new_integration(client, message):
         token = await store.token(message.from_user.id, oauth)
@@ -14,15 +14,16 @@ def register(app, store: GitHubStore, oauth):
         if len(message.command) < 2 or "/" not in message.command[1]:
             await message.reply_text(INTEGRATION_USAGE)
             return
-        full_name = message.command[1].strip("/")
-        owner, name = full_name.split("/", 1)
+        owner, name = message.command[1].strip("/").split("/", 1)
         try:
-            repo = await RepositoryService(GitHubClient(token)).get(owner, name)
+            service = RepositoryService(GitHubClient(token))
+            repo = await service.get(owner, name)
             existing = await store.list_integrations(message.from_user.id)
             if any(item["repository_id"] == repo["id"] for item in existing):
                 await message.reply_text(INTEGRATION_EXISTS)
                 return
-            await store.add_integration(message.from_user.id, repo)
+            hook = await service.create_webhook(owner, name, f"{webhook_url}/webhooks/github", webhook_secret, ["push", "pull_request", "issues", "release", "workflow_run", "star"])
+            await store.add_integration(message.from_user.id, repo, hook.get("id"))
             await message.reply_text(INTEGRATION_ADDED)
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
@@ -54,7 +55,5 @@ def register(app, store: GitHubStore, oauth):
         removed = await store.delete_integration(query.from_user.id, repository_id)
         items = await store.list_integrations(query.from_user.id)
         await query.message.edit_text(INTEGRATIONS_EMPTY if not items else INTEGRATION_LIST, reply_markup=integrations(items) if items else None)
-        if not removed:
-            return
 
     return new_integration, list_integrations, delete_integration, delete_callback
