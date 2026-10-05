@@ -87,9 +87,10 @@ def build_web(bot, oauth, sessions, store):
         integrations = await store.integrations_for_repository(repository_id)
         text, number = event_text(x_github_event, payload)
         for integration in integrations:
-            if not await store.get_settings(integration["telegram_id"]).get("notifications_enabled", True):
+            settings = await store.get_settings(integration["telegram_id"])
+            if not settings.get("notifications_enabled", True):
                 continue
-            if await store.get_settings(integration["telegram_id"]).get(f"mute:{repository_id}", False):
+            if settings.get(f"mute:{repository_id}", False):
                 continue
             if not await store.claim_delivery(x_github_delivery, integration["telegram_id"], repository_id, x_github_event, number, 0):
                 continue
