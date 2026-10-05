@@ -133,6 +133,17 @@ class RepositoryService:
     async def create_webhook(self, owner: str, name: str, url: str, secret: str, events: list[str]):
         return await self.client.request("POST", f"/repos/{owner}/{name}/hooks", json={"name": "web", "active": True, "events": events, "config": {"url": url, "content_type": "json", "secret": secret, "insecure_ssl": "0"}})
 
+    async def webhook(self, owner: str, name: str, hook_id: int) -> dict[str, Any]:
+        return await self.client.request("GET", f"/repos/{owner}/{name}/hooks/{hook_id}")
+
+    async def update_webhook(self, owner: str, name: str, hook_id: int, *, events: list[str] | None = None, active: bool | None = None) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        if events is not None:
+            payload["events"] = events
+        if active is not None:
+            payload["active"] = active
+        return await self.client.request("PATCH", f"/repos/{owner}/{name}/hooks/{hook_id}", json=payload)
+
     async def delete_webhook(self, owner: str, name: str, hook_id: int):
         return await self.client.request("DELETE", f"/repos/{owner}/{name}/hooks/{hook_id}")
 
