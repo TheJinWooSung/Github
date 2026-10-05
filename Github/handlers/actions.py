@@ -13,6 +13,7 @@ from ..buttons import (
     ACTION_WORKFLOWS,
     ACTION_LOGS,
     ACTION_JOBS_EMPTY,
+    ACTION_ARTIFACTS_EMPTY,
     ACTION_RUNS_EMPTY,
     ACTIONS_EMPTY,
     action_artifacts,
@@ -161,7 +162,7 @@ def register(app, store: GitHubStore, oauth):
             else:
                 items = (await service.run_artifacts(owner, name, run_id)).get("artifacts", [])
                 await query.message.edit_text(
-                    f"<b>{ACTION_ARTIFACTS}</b> · <code>{run_id}</code>\n\n{ACTION_JOBS_EMPTY if False else ''}".rstrip(),
+                    f"<b>{ACTION_ARTIFACTS}</b> · <code>{run_id}</code>\n\n{ACTION_ARTIFACTS_EMPTY if not items else ''}".rstrip(),
                     reply_markup=action_artifacts(items, repository_id, run_id),
                 )
         except Exception as exc:
@@ -224,6 +225,25 @@ def register(app, store: GitHubStore, oauth):
                 raise RuntimeError("Job not found")
             logs = await service.job_logs(owner, name, job_id)
             await query.message.edit_text(action_logs_text(item.get("name", ACTION_LOGS), logs), reply_markup=action_job_view(repository_id, run_id, job_id))
+        except Exception as exc:
+            await query.message.edit_text(error_message(str(exc)))
+
+    @app.on_callback_query(filters.regex(r"^artifact:\d+:\d+:\d+$"))
+    async def run_artifact_view(client, query):
+        await query.answer()
+        _, repository_id, run_id, artifact_id = query.data.split(":")
+        repository_id, run_id, artifact_id = int(repository_id), int(run_id), int(artifact_id)
+        service = await service_for(query.from_user.id)
+        if not service:
+            await query.message.edit_text(error_message(ACTION_CONNECT_REQUIRED))
+            return
+        try:
+            _, owner, name = await repository(service, repository_id)
+            data = (await service.run_artifacts(owner, name, run_id)).get("artifacts", [])
+            item = next((artifact for artifact in data if artifact.get("id") == artifact_id), None)
+            if not item:
+                raise RuntimeError(ACTION_NOT_FOUND)
+            await query.message.edit_text(artifact_text(item), reply_markup=action_artifacts(data, repository_id, run_id))
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)))
 
