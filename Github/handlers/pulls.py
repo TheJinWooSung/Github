@@ -1,5 +1,5 @@
 from pyrogram import filters
-from ..buttons import NOT_CONNECTED, PR_ERROR, PR_REVIEWED, PR_MERGED, PR_CLOSED, PR_REOPENED, REVIEW_PROMPT, REVIEW_REQUIRED, MERGE_CONFIRM, error_message, pull_requests, pull_request_view, pull_request_text, pull_request_files_text, pull_request_commits_text, pull_request_reviews_text, pull_request_list_text
+from ..buttons import NOT_CONNECTED, PR_ERROR, PR_REVIEWED, PR_MERGED, PR_CLOSED, PR_REOPENED, REVIEW_PROMPT, REVIEW_REQUIRED, MERGE_CONFIRM, error_message, pull_requests, pull_request_view, pull_request_text, pull_request_files_text, pull_request_commits_text, pull_request_reviews_text, pull_request_list_text, pull_request_diff_text, pull_request_diff_actions
 from ..github.client import GitHubClient
 from ..github.repositories import RepositoryService
 from ..state import ReviewSession, SessionStore
@@ -39,6 +39,44 @@ def register(app, store: GitHubStore, sessions: SessionStore, oauth):
             repo = await service.get_by_id(int(repository_id))
             item = await service.pull_request(repo["owner"]["login"], repo["name"], int(number))
             await query.message.edit_text(pull_request_text(item), reply_markup=pull_request_view(int(repository_id), int(number), item.get("state", "open"), item.get("draft", False)))
+        except Exception as exc:
+            await query.message.edit_text(error_message(str(exc)))
+
+    @app.on_callback_query(filters.regex(r"^pr:\d+:\d+:diff$"))
+    async def pull_request_diff(client, query):
+        await query.answer()
+        _, repository_id, number, _ = query.data.split(":")
+        service = await service_for(query.from_user.id)
+        if not service:
+            await query.message.edit_text(NOT_CONNECTED)
+            return
+        try:
+            repo = await service.get_by_id(int(repository_id))
+            items = await service.pull_request_files(repo["owner"]["login"], repo["name"], int(number), per_page=100)
+            items = [item for item in items if item.get("status") != "unchanged"]
+            if not items:
+                await query.message.edit_text("<b>No changes found.</b>")
+                return
+            await query.message.edit_text(pull_request_diff_text(items[0], 0, len(items)), reply_markup=pull_request_diff_actions(int(repository_id), int(number), 0, len(items)))
+        except Exception as exc:
+            await query.message.edit_text(error_message(str(exc)))
+
+    @app.on_callback_query(filters.regex(r"^diff:\d+:\d+:\d+$"))
+    async def pull_request_diff_page(client, query):
+        await query.answer()
+        _, repository_id, number, index = query.data.split(":")
+        service = await service_for(query.from_user.id)
+        if not service:
+            await query.message.edit_text(NOT_CONNECTED)
+            return
+        try:
+            repo = await service.get_by_id(int(repository_id))
+            items = await service.pull_request_files(repo["owner"]["login"], repo["name"], int(number), per_page=100)
+            items = [item for item in items if item.get("status") != "unchanged"]
+            position = int(index)
+            if position < 0 or position >= len(items):
+                raise ValueError("Diff file not found")
+            await query.message.edit_text(pull_request_diff_text(items[position], position, len(items)), reply_markup=pull_request_diff_actions(int(repository_id), int(number), position, len(items)))
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)))
 
