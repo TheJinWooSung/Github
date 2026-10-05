@@ -1,6 +1,8 @@
 import hashlib
 import hmac
+import html
 import json
+import time
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
@@ -12,32 +14,35 @@ def verify_signature(body: bytes, secret: str, signature: str | None) -> None:
         raise HTTPException(status_code=403, detail="Invalid webhook signature")
 
 def event_text(event: str, payload: dict) -> tuple[str, int | None]:
-    repository = payload.get("repository", {}).get("full_name", "unknown/repository")
-    action = payload.get("action", "updated")
-    sender = payload.get("sender", {}).get("login", "unknown")
+    repository = html.escape(payload.get("repository", {}).get("full_name", "unknown/repository"))
+    action = html.escape(payload.get("action", "updated"))
+    sender = html.escape(payload.get("sender", {}).get("login", "unknown"))
     if event == "push":
-        ref = payload.get("ref", "").removeprefix("refs/heads/")
+        ref = html.escape(payload.get("ref", "").removeprefix("refs/heads/"))
         count = len(payload.get("commits", []))
         return f"<b>{repository}</b>\n\n<b>Push</b> · <code>{ref}</code>\n{sender} pushed {count} commit(s).", None
     if event == "pull_request":
         item = payload.get("pull_request", {})
         number = item.get("number") or payload.get("number")
-        title = item.get("title", "Pull request")
+        title = html.escape(item.get("title", "Pull request"))
         return f"<b>{repository}</b>\n\n<b>Pull request #{number}</b> · {action}\n{title}\nby <code>{sender}</code>", number
     if event == "issues":
         item = payload.get("issue", {})
         number = item.get("number")
-        title = item.get("title", "Issue")
+        title = html.escape(item.get("title", "Issue"))
         return f"<b>{repository}</b>\n\n<b>Issue #{number}</b> · {action}\n{title}\nby <code>{sender}</code>", number
     if event == "release":
         release = payload.get("release", {})
-        return f"<b>{repository}</b>\n\n<b>Release</b> · {action}\n{release.get('name') or release.get('tag_name', 'release')}", None
+        title = html.escape(release.get("name") or release.get("tag_name", "release"))
+        return f"<b>{repository}</b>\n\n<b>Release</b> · {action}\n{title}", None
     if event == "workflow_run":
         run = payload.get("workflow_run", {})
-        return f"<b>{repository}</b>\n\n<b>Actions</b> · {action}\n{run.get('name', 'workflow')} · <code>{run.get('conclusion') or run.get('status', 'unknown')}</code>", None
+        name = html.escape(run.get("name", "workflow"))
+        state = html.escape(run.get("conclusion") or run.get("status", "unknown"))
+        return f"<b>{repository}</b>\n\n<b>Actions</b> · {action}\n{name} · <code>{state}</code>", run.get("id")
     if event == "star":
         return f"<b>{repository}</b>\n\n<b>Star</b> · {action}\nby <code>{sender}</code>", None
-    return f"<b>{repository}</b>\n\n<b>{event}</b> · {action}\nby <code>{sender}</code>", None
+    return f"<b>{repository}</b>\n\n<b>{html.escape(event)}</b> · {action}\nby <code>{sender}</code>", None
 
 def build_web(bot, oauth, sessions, store):
     app = FastAPI(title="GitHub Telegram Control Center")
@@ -53,7 +58,7 @@ def build_web(bot, oauth, sessions, store):
         if not code or not state:
             return HTMLResponse("<h2>Missing OAuth response.</h2>", status_code=400)
         session = await sessions.get(state)
-        if not session or not hasattr(session, "telegram_id") or session.expires_at <= __import__("time").time():
+        if not session or not hasattr(session, "telegram_id") or session.expires_at <= time.time():
             return HTMLResponse("<h2>Authorization session expired.</h2>", status_code=400)
         try:
             grant = await oauth.exchange(code, session.verifier)
@@ -62,8 +67,8 @@ def build_web(bot, oauth, sessions, store):
             await bot.app.send_message(session.telegram_id, "<b>GitHub connected</b>\n\nYour GitHub account is now authorized.")
             await sessions.delete(state)
             return HTMLResponse("<h2>GitHub connected</h2><p>You can return to Telegram.</p>")
-        except Exception as exc:
-            return HTMLResponse(f"<h2>GitHub authorization failed</h2><p>{str(exc)}</p>", status_code=400)
+        except Exception:
+            return HTMLResponse("<h2>GitHub authorization failed.</h2><p>Please restart /connect and try again.</p>", status_code=400)
 
     @app.post("/webhooks/github")
     async def github_webhook(request: Request, x_hub_signature_256: str | None = Header(default=None), x_github_event: str | None = Header(default=None), x_github_delivery: str | None = Header(default=None)):
@@ -75,16 +80,24 @@ def build_web(bot, oauth, sessions, store):
             payload = json.loads(body)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid JSON payload")
-        repository_id = payload.get("repository", {}).get("id")
+        repository = payload.get("repository", {})
+        repository_id = repository.get("id")
         if not repository_id:
             return {"status": "ignored"}
         integrations = await store.integrations_for_repository(repository_id)
         text, number = event_text(x_github_event, payload)
         for integration in integrations:
+            if not await store.get_settings(integration["telegram_id"]).get("notifications_enabled", True):
+                continue
+            if await store.get_settings(integration["telegram_id"]).get(f"mute:{repository_id}", False):
+                continue
             if not await store.claim_delivery(x_github_delivery, integration["telegram_id"], repository_id, x_github_event, number, 0):
                 continue
-            message = await bot.app.send_message(integration["telegram_id"], text)
-            await store.save_delivery(x_github_delivery, integration["telegram_id"], repository_id, x_github_event, number, message.id)
+            try:
+                message = await bot.app.send_message(integration["telegram_id"], text)
+                await store.save_delivery(x_github_delivery, integration["telegram_id"], repository_id, x_github_event, number, message.id)
+            except Exception:
+                await store.fail_delivery(x_github_delivery, integration["telegram_id"])
         return {"status": "ok"}
 
     return app
