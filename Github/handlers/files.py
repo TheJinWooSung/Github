@@ -22,7 +22,7 @@ def diff_stats(original: str, updated: str) -> tuple[int, int]:
             additions += b2 - b1
     return additions, deletions
 
-def register(app, service, sessions: SessionStore):
+def register(app, service, sessions: SessionStore, webapp_url: str | None = None):
     @app.on_callback_query(filters.regex(r"^file:"))
     async def handle_file(client, query):
         await query.answer()
@@ -44,7 +44,7 @@ def register(app, service, sessions: SessionStore):
             content = decode_content(data)
             session = EditSession(query.from_user.id, query.message.chat.id, browser.repository_id, browser.owner, browser.name, browser.branch, item["path"], content, base_head=await service.branch_head(browser.owner, browser.name, browser.branch), browser_token=browser_token)
             token = await sessions.create(session)
-            await query.message.edit_text(file_text(browser.owner, browser.name, item["path"], content, browser.branch), reply_markup=file_view(browser.repository_id, token, browser_token))
+            await query.message.edit_text(file_text(browser.owner, browser.name, item["path"], content, browser.branch), reply_markup=file_view(browser.repository_id, token, browser_token, webapp_url, item["path"], browser.branch))
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)), reply_markup=back())
 
