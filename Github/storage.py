@@ -141,8 +141,14 @@ class GitHubStore:
             {"$set": {"message_id": message_id, "status": "sent", "sent_at": datetime.now(timezone.utc)}},
         )
 
-    async def fail_delivery(self, delivery_id: str, telegram_id: int) -> None:
-        await self.deliveries.delete_one({"delivery_id": delivery_id, "telegram_id": telegram_id})
+    async def fail_delivery(self, delivery_id: str, telegram_id: int, error: str | None = None) -> None:
+        await self.deliveries.update_one({"delivery_id": delivery_id, "telegram_id": telegram_id}, {"$set": {"status": "failed", "error": error, "failed_at": datetime.now(timezone.utc)}})
+
+    async def list_deliveries(self, telegram_id: int, repository_id: int, limit: int = 25):
+        return await self.deliveries.find({"telegram_id": telegram_id, "repository_id": repository_id}).sort("created_at", -1).to_list(length=limit)
+
+    async def delivery(self, telegram_id: int, delivery_id: str):
+        return await self.deliveries.find_one({"telegram_id": telegram_id, "delivery_id": delivery_id})
 
     async def integrations_for_repository(self, repository_id: int):
         return await self.integrations.find({"repository_id": repository_id}).to_list(length=100)
