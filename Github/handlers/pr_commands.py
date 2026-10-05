@@ -40,17 +40,48 @@ def register(app, store: GitHubStore, oauth):
         if not service:
             await message.reply_text(AUTH_REQUIRED)
             return
-        query = message.text.split(maxsplit=1)[1].strip() if len(message.text.split(maxsplit=1)) > 1 else ""
-        if not query:
+        raw = message.text.split(maxsplit=1)[1].strip() if len(message.text.split(maxsplit=1)) > 1 else ""
+        if raw.lower().startswith("create "):
+            payload = raw[7:].strip()
+            parts = [item.strip() for item in payload.split("|")]
+            try:
+                if len(parts) >= 3:
+                    refs = parts[0].split()
+                    if len(refs) < 2:
+                        await message.reply_text("Use /pr create head base | title | body.")
+                        return
+                    head, base, title, body = refs[0], refs[1], parts[1], parts[2]
+                else:
+                    args = payload.split()
+                    if len(args) < 3:
+                        await message.reply_text("Use /pr create head base | title | body.")
+                        return
+                    head, base = args[0], args[1]
+                    title = " ".join(args[2:])
+                    body = ""
+                service, repo = await repo_context(message)
+                if not repo:
+                    await message.reply_text(REPO_REQUIRED)
+                    return
+                owner, name = repo["owner"]["login"], repo["name"]
+                draft = title.endswith(" --draft")
+                if draft:
+                    title = title[:-8].rstrip()
+                item = await service.create_pull_request(owner, name, title, head, base, body, draft)
+                await message.reply_text(f"<b>Pull request created.</b>\n\n<code>#{item.get('number')}</code> {escape(item.get('title', title))}")
+            except Exception as exc:
+                await message.reply_text(error_message(str(exc)))
+            return
+        if not raw:
             await message.reply_text(PR_SEARCH_USAGE)
             return
         try:
-            data = await service.search_issues(f"is:pr {query}")
+            data = await service.search_issues(f"is:pr {raw}")
             items = data.get("items", [])
             lines = ["<b>Pull requests</b>"]
             for item in items[:20]:
-                repo = item.get("repository_url", "").rsplit("/repos/", 1)[-1]
-                lines.append(f"\n<code>#{item.get('number')}</code> {escape(item.get('title', 'Pull request'))[:100]}\n{escape(repo)}")
+                repo_name = item.get("repository_url", "").rsplit("/repos/", 1)[-1]
+                lines.append(f"\n<code>#{item.get('number')}</code> {escape(item.get('title', 'Pull request'))[:100]}\n{escape(repo_name)}")
             await message.reply_text("".join(lines) if len(lines) > 1 else "<b>No pull requests found.</b>")
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
