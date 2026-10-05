@@ -36,7 +36,9 @@ class SessionStore:
 
     async def set(self, token: str, session: EditSession) -> None:
         if self.redis:
-            await self.redis.setex(f"github:session:{token}", self.ttl, json.dumps(asdict(session)))
+            payload = json.dumps(asdict(session))
+            await self.redis.setex(f"github:session:{token}", self.ttl, payload)
+            await self.redis.setex(f"github:active:{session.user_id}", self.ttl, token)
             return
         async with self.lock:
             self.memory[token] = session
@@ -55,6 +57,15 @@ class SessionStore:
                 self.memory.pop(token, None)
                 return None
             return session
+
+    async def active(self, user_id: int) -> str | None:
+        if self.redis:
+            return await self.redis.get(f"github:active:{user_id}")
+        async with self.lock:
+            for token, session in self.memory.items():
+                if session.user_id == user_id and session.expires_at > time.time():
+                    return token
+            return None
 
     async def delete(self, token: str) -> None:
         if self.redis:
