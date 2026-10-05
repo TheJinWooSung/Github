@@ -11,21 +11,32 @@ class GitHubClient:
         self.timeout = timeout
         self._lock = asyncio.Lock()
 
-    def headers(self) -> dict[str, str]:
-        return {"Accept": "application/vnd.github+json", "Authorization": f"Bearer {self.token}", "X-GitHub-Api-Version": API_VERSION}
+    def headers(self, extra: dict[str, str] | None = None) -> dict[str, str]:
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {self.token}",
+            "X-GitHub-Api-Version": API_VERSION,
+            "User-Agent": "GitHub-for-Telegram",
+        }
+        if extra:
+            headers.update(extra)
+        return headers
 
-    async def request(self, method: str, path: str, **kwargs: Any) -> Any:
+    async def _request(self, method: str, path: str, text: bool = False, **kwargs: Any):
         if not self.token:
             raise RuntimeError("GitHub authentication token is not configured")
+        supplied = kwargs.pop("headers", None)
+        headers = self.headers(supplied)
         async with self._lock:
-            async with httpx.AsyncClient(base_url=API, timeout=self.timeout) as client:
-                response = await client.request(method, path, headers=self.headers(), **kwargs)
+            async with httpx.AsyncClient(base_url=API, timeout=self.timeout, follow_redirects=True) as client:
+                response = await client.request(method, path, headers=headers, **kwargs)
         if response.status_code == 204:
             return None
         if response.status_code == 401:
             raise RuntimeError("GitHub authentication failed")
         if response.status_code == 403 and response.headers.get("X-RateLimit-Remaining") == "0":
-            raise RuntimeError("GitHub API rate limit reached")
+            retry = response.headers.get("Retry-After") or response.headers.get("X-RateLimit-Reset")
+            raise RuntimeError(f"GitHub API rate limit reached{f'; retry {retry}' if retry else ''}")
         if response.status_code >= 400:
             try:
                 payload = response.json()
@@ -33,22 +44,13 @@ class GitHubClient:
                 payload = {"message": response.text}
             message = payload.get("message", response.text) if isinstance(payload, dict) else response.text
             raise RuntimeError(f"GitHub API error {response.status_code}: {message}")
-        return response.json()
+        return response.text if text else response.json()
+
+    async def request(self, method: str, path: str, **kwargs: Any) -> Any:
+        return await self._request(method, path, **kwargs)
 
     async def request_text(self, method: str, path: str, **kwargs: Any) -> str:
-        if not self.token:
-            raise RuntimeError("GitHub authentication token is not configured")
-        async with self._lock:
-            async with httpx.AsyncClient(base_url=API, timeout=self.timeout, follow_redirects=True) as client:
-                response = await client.request(method, path, headers=self.headers(), **kwargs)
-        if response.status_code >= 400:
-            try:
-                payload = response.json()
-                message = payload.get("message", response.text) if isinstance(payload, dict) else response.text
-            except ValueError:
-                message = response.text
-            raise RuntimeError(f"GitHub API error {response.status_code}: {message}")
-        return response.text
+        return await self._request(method, path, text=True, **kwargs)
 
     async def close(self):
         return None
