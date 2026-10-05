@@ -144,7 +144,7 @@ def integration_events(repository_id: int, events: list[str], active: bool = Tru
         state = INTEGRATION_ON if event in events else INTEGRATION_OFF
         rows.append(_row((f"{event} · {state}", f"integration:{repository_id}:toggle:{event}")))
     rows.append(_row((f"{INTEGRATION_ACTIVE}: {INTEGRATION_ON if active else INTEGRATION_OFF}", f"integration:{repository_id}:active"), (INTEGRATION_DELIVERIES, f"integration:{repository_id}:deliveries")))
-    rows.append(_row((BACK, "integrations:list"))
+    rows.append(_row((BACK, "integrations:list")))
     return InlineKeyboardMarkup(rows)
 
 def integration_deliveries(items, repository_id: int):
