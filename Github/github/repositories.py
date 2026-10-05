@@ -218,7 +218,7 @@ class RepositoryService:
         return await self.client.request("GET", f"/repos/{owner}/{name}/actions/runs/{run_id}/jobs", params={"page": page, "per_page": min(per_page, 100)})
 
     async def job_logs(self, owner: str, name: str, job_id: int) -> str:
-        return await self.client.request("GET", f"/repos/{owner}/{name}/actions/jobs/{job_id}/logs")
+        return await self.client.request_text("GET", f"/repos/{owner}/{name}/actions/jobs/{job_id}/logs")
 
     async def artifacts(self, owner: str, name: str, page: int = 1, per_page: int = 30) -> dict[str, Any]:
         return await self.client.request("GET", f"/repos/{owner}/{name}/actions/artifacts", params={"page": page, "per_page": min(per_page, 100)})
