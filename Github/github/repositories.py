@@ -144,6 +144,9 @@ class RepositoryService:
             payload["active"] = active
         return await self.client.request("PATCH", f"/repos/{owner}/{name}/hooks/{hook_id}", json=payload)
 
+    async def redeliver_webhook(self, owner: str, name: str, hook_id: int, delivery_id: str):
+        return await self.client.request("POST", f"/repos/{owner}/{name}/hooks/{hook_id}/deliveries/{delivery_id}/attempts")
+
     async def delete_webhook(self, owner: str, name: str, hook_id: int):
         return await self.client.request("DELETE", f"/repos/{owner}/{name}/hooks/{hook_id}")
 
