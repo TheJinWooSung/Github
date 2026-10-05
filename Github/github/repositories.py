@@ -127,6 +127,9 @@ class RepositoryService:
     async def labels(self, owner: str, name: str, page: int = 1, per_page: int = 100) -> list[dict[str, Any]]:
         return await self.client.request("GET", f"/repos/{owner}/{name}/labels", params={"page": page, "per_page": min(per_page, 100)})
 
+    async def issue_comment(self, owner: str, name: str, number: int, body: str):
+        return await self.client.request("POST", f"/repos/{owner}/{name}/issues/{number}/comments", json={"body": body})
+
     async def issues(self, owner: str, name: str, state: str = "open", page: int = 1, per_page: int = 30) -> list[dict[str, Any]]:
         return await self.client.request("GET", f"/repos/{owner}/{name}/issues", params={"state": state, "page": page, "per_page": min(per_page, 100)})
 
