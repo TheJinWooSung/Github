@@ -96,13 +96,13 @@ def commit_preview(data: CommitView):
     return f"<b>{REVIEW_CHANGES}</b>\n\n<code>{escape(data.repository)}</code> · <code>{escape(data.branch)}</code>\n\n{FILES}  <b>{data.files}</b>\n{ADDED}  <b>+{data.additions}</b>\n{REMOVED}  <b>-{data.deletions}</b>\n\n<b>{COMMIT_MESSAGE}</b>\n<code>{escape(data.message)}</code>\n\n{CONFIRM_COMMIT}"
 
 
-def files(items, repository_id: int):
+def files(items, repository_id: int, path: str = ""):
     rows = []
     for index, item in enumerate(items[:20]):
         name = item.get("name", "item")
         label = f"DIR  {name}" if item.get("type") == "dir" else name
         rows.append(_row((label[:55], f"file:{repository_id}:{index}")))
-    rows.append(_row((BACK, f"repo:{repository_id}")))
+    rows.append(_row((BACK, f"repo:{repository_id}:files")))
     return InlineKeyboardMarkup(rows)
 
 def file_view(repository_id: int, token: str):
