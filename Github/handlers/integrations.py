@@ -4,10 +4,10 @@ from ..github.client import GitHubClient
 from ..github.repositories import RepositoryService
 from ..storage import GitHubStore
 
-def register(app, store: GitHubStore):
+def register(app, store: GitHubStore, oauth):
     @app.on_message(filters.command("newintegration"))
     async def new_integration(client, message):
-        token = await store.token(message.from_user.id)
+        token = await store.token(message.from_user.id, oauth)
         if not token:
             await message.reply_text(NOT_CONNECTED)
             return
