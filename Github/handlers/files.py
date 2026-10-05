@@ -1,8 +1,8 @@
 import base64
 import difflib
 from pyrogram import filters
-from ..buttons import back, files, file_view, files_text, file_text, error_message, commit_preview, CommitView, commit_review, edit_prompt, commit_prompt, commit_result, SESSION_EXPIRED, COMMIT_SESSION_EXPIRED, COMMIT_CANCELLED, UNCHANGED_FILE, INVALID_COMMIT_MESSAGE
-from ..state import EditSession, BrowserSession, SessionStore
+from ..buttons import back, files, file_view, files_text, file_text, error_message, commit_preview, CommitView, commit_review, edit_prompt, commit_prompt, commit_result, stage_actions, staged_text, SESSION_EXPIRED, COMMIT_SESSION_EXPIRED, COMMIT_CANCELLED, UNCHANGED_FILE, INVALID_COMMIT_MESSAGE
+from ..state import EditSession, BrowserSession, SessionStore, CommitStageSession, StagedChange
 from ..github.commit import CommitEngine, CommitPlan, FileChange
 
 def decode_content(data: dict) -> str:
@@ -106,10 +106,16 @@ def register(app, service, sessions: SessionStore):
             if additions == 0 and deletions == 0:
                 await message.reply_text(UNCHANGED_FILE, reply_markup=back(f"browse:{session.browser_token}:back"))
                 return
-            session.status = "ready"
-            await sessions.set(token, session)
-            preview = commit_preview(CommitView(f"{session.owner}/{session.name}", session.branch, 1, additions, deletions, session.message))
-            await message.reply_text(preview, reply_markup=commit_review(token))
+            existing_token = await sessions.stage(message.from_user.id)
+            stage = await sessions.get(existing_token) if existing_token else None
+            if not isinstance(stage, CommitStageSession) or stage.chat_id != message.chat.id or stage.repository_id != session.repository_id or stage.branch != session.branch:
+                stage = CommitStageSession(message.from_user.id, message.chat.id, session.repository_id, session.owner, session.name, session.branch, [])
+                existing_token = await sessions.create_stage(stage)
+            stage.changes = [item for item in stage.changes if item.path != session.path]
+            stage.changes.append(StagedChange(session.path, "modified", session.content, additions, deletions))
+            await sessions.set(existing_token, stage)
+            await sessions.delete(token)
+            await message.reply_text(staged_text(f"{stage.owner}/{stage.name}", stage.branch, stage.changes), reply_markup=stage_actions(existing_token))
             return
 
     @app.on_callback_query(filters.regex(r"^commit:"))
@@ -117,20 +123,55 @@ def register(app, service, sessions: SessionStore):
         await query.answer()
         _, token, action = query.data.split(":", 2)
         session = await sessions.get(token)
-        if not isinstance(session, EditSession) or session.user_id != query.from_user.id or session.chat_id != query.message.chat.id or session.status != "ready":
+        if not isinstance(session, EditSession) or session.user_id != query.from_user.id:
             await query.message.edit_text(error_message(COMMIT_SESSION_EXPIRED), reply_markup=back())
             return
         if action == "cancel":
             await sessions.delete(token)
             await query.message.edit_text(f"<b>{COMMIT_CANCELLED}</b>", reply_markup=back(f"browse:{session.browser_token}:back"))
             return
-        if action != "confirm":
+
+    @app.on_callback_query(filters.regex(r"^stage:"))
+    async def handle_stage(client, query):
+        await query.answer()
+        _, token, action = query.data.split(":", 2)
+        stage = await sessions.get(token)
+        if not isinstance(stage, CommitStageSession) or stage.user_id != query.from_user.id or stage.chat_id != query.message.chat.id:
+            await query.message.edit_text(error_message(COMMIT_SESSION_EXPIRED), reply_markup=back())
             return
-        try:
-            plan = CommitPlan(f"{session.owner}/{session.name}", session.branch, session.message or "", [FileChange(session.path, "modified", session.content)])
-            result = await CommitEngine(service).execute(plan, session.base_head)
+        if action == "clear":
             await sessions.delete(token)
-            await query.message.edit_text(commit_result(result["new_sha"], session.path, session.message or ""), reply_markup=back(f"browse:{session.browser_token}:back"))
+            await query.message.edit_text("<b>Staged changes cleared.</b>", reply_markup=back("nav:back"))
+            return
+        if action != "commit" or not stage.changes:
+            await query.message.edit_text(staged_text(f"{stage.owner}/{stage.name}", stage.branch, stage.changes), reply_markup=stage_actions(token))
+            return
+        message_text = None
+        try:
+            await query.message.edit_text(staged_text(f"{stage.owner}/{stage.name}", stage.branch, stage.changes))
+            await query.message.reply_text("Send the commit message.")
+            stage.status = "awaiting_message"
+            await sessions.set(token, stage)
         except Exception as exc:
-            await query.message.edit_text(error_message(str(exc)), reply_markup=back(f"browse:{session.browser_token}:back"))
+            await query.message.edit_text(error_message(str(exc)), reply_markup=back())
+    
+    @app.on_message(filters.text & ~filters.command(["start", "repos"]))
+    async def handle_staged_message(client, message):
+        token = await sessions.stage(message.from_user.id)
+        stage = await sessions.get(token) if token else None
+        if not isinstance(stage, CommitStageSession) or stage.chat_id != message.chat.id or getattr(stage, "status", "awaiting_message") != "awaiting_message":
+            return
+        text_value = message.text.strip()
+        if not text_value:
+            await message.reply_text(INVALID_COMMIT_MESSAGE)
+            return
+        plan = CommitPlan(f"{stage.owner}/{stage.name}", stage.branch, text_value, [FileChange(x.path, x.status, x.content, x.additions, x.deletions) for x in stage.changes])
+        try:
+            engine = CommitEngine(service)
+            result = await engine.execute(plan)
+            await sessions.delete(token)
+            await message.reply_text(commit_result(result["new_sha"], f"{len(stage.changes)} files", text_value), reply_markup=back("nav:back"))
+        except Exception as exc:
+            await message.reply_text(error_message(str(exc)), reply_markup=stage_actions(token))
+
     return handle_file, handle_browse, handle_edit, handle_commit
