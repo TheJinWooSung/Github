@@ -1,5 +1,5 @@
 from pyrogram import filters
-from ..buttons import NOT_CONNECTED, PR_ERROR, PR_REVIEWED, PR_MERGED, PR_CLOSED, PR_REOPENED, REVIEW_PROMPT, REVIEW_REQUIRED, MERGE_CONFIRM, error_message, pull_requests, pull_request_view, pull_request_text, pull_request_files_text, pull_request_commits_text, pull_request_reviews_text
+from ..buttons import NOT_CONNECTED, PR_ERROR, PR_REVIEWED, PR_MERGED, PR_CLOSED, PR_REOPENED, REVIEW_PROMPT, REVIEW_REQUIRED, MERGE_CONFIRM, error_message, pull_requests, pull_request_view, pull_request_text, pull_request_files_text, pull_request_commits_text, pull_request_reviews_text, pull_request_list_text
 from ..github.client import GitHubClient
 from ..github.repositories import RepositoryService
 from ..state import ReviewSession, SessionStore
@@ -23,7 +23,7 @@ def register(app, store: GitHubStore, sessions: SessionStore, oauth):
         try:
             repo = await service.get_by_id(repository_id)
             items = await service.pull_requests(repo["owner"]["login"], repo["name"])
-            await query.message.edit_text(f"<b>{repo['full_name']}</b>\n\nPull requests", reply_markup=pull_requests(items, repository_id))
+            await query.message.edit_text(pull_request_list_text(repo["full_name"]), reply_markup=pull_requests(items, repository_id))
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)))
 
