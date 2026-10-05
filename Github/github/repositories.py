@@ -195,6 +195,9 @@ class RepositoryService:
     async def workflow(self, owner: str, name: str, workflow_id: int | str) -> dict[str, Any]:
         return await self.client.request("GET", f"/repos/{owner}/{name}/actions/workflows/{workflow_id}")
 
+    async def workflow_run(self, owner: str, name: str, run_id: int) -> dict[str, Any]:
+        return await self.client.request("GET", f"/repos/{owner}/{name}/actions/runs/{run_id}")
+
     async def workflow_runs_for(self, owner: str, name: str, workflow_id: int | str, page: int = 1, per_page: int = 30) -> dict[str, Any]:
         return await self.client.request("GET", f"/repos/{owner}/{name}/actions/workflows/{workflow_id}/runs", params={"page": page, "per_page": min(per_page, 100)})
 
@@ -219,6 +222,9 @@ class RepositoryService:
 
     async def artifacts(self, owner: str, name: str, page: int = 1, per_page: int = 30) -> dict[str, Any]:
         return await self.client.request("GET", f"/repos/{owner}/{name}/actions/artifacts", params={"page": page, "per_page": min(per_page, 100)})
+
+    async def run_artifacts(self, owner: str, name: str, run_id: int, page: int = 1, per_page: int = 30) -> dict[str, Any]:
+        return await self.client.request("GET", f"/repos/{owner}/{name}/actions/runs/{run_id}/artifacts", params={"page": page, "per_page": min(per_page, 100)})
 
     async def permissions(self, owner: str, name: str) -> dict[str, Any]:
         return await self.client.request("GET", f"/repos/{owner}/{name}")
