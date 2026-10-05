@@ -59,6 +59,9 @@ INTEGRATION_EVENTS = "Webhook events"
 INTEGRATION_ACTIVE = "Webhook active"
 INTEGRATION_ON = "On"
 INTEGRATION_OFF = "Off"
+INTEGRATION_DELIVERIES = "Deliveries"
+DELIVERY_RETRY = "Retry"
+DELIVERY_BACK = "Webhook events"
 WEBHOOK_EVENTS = ("push", "pull_request", "issues", "issue_comment", "pull_request_review", "release", "workflow_run", "workflow_job", "deployment", "deployment_status", "star", "fork", "create", "delete")
 
 PR_LIST = "Pull requests"
@@ -139,8 +142,27 @@ def integration_events(repository_id: int, events: list[str], active: bool = Tru
     for event in WEBHOOK_EVENTS:
         state = INTEGRATION_ON if event in events else INTEGRATION_OFF
         rows.append(_row((f"{event} · {state}", f"integration:{repository_id}:toggle:{event}")))
-    rows.append(_row((f"{INTEGRATION_ACTIVE}: {INTEGRATION_ON if active else INTEGRATION_OFF}", f"integration:{repository_id}:active")))
-    rows.append(_row((BACK, "integrations:list")))
+    rows.append(_row((f"{INTEGRATION_ACTIVE}: {INTEGRATION_ON if active else INTEGRATION_OFF}", f"integration:{repository_id}:active"), (INTEGRATION_DELIVERIES, f"integration:{repository_id}:deliveries")))
+    rows.append(_row((BACK, "integrations:list"))
+    return InlineKeyboardMarkup(rows)
+
+def integration_deliveries(items, repository_id: int):
+    rows = []
+    for item in items[:25]:
+        delivery = str(item.get("delivery_id", ""))[:12]
+        label = f"{item.get('event', 'event')} · {item.get('status', 'unknown')} · {delivery}"
+        rows.append(_row((label[:60], f"delivery:{repository_id}:{item.get('delivery_id', '')}")))
+    rows.append(_row((BACK, f"integration:{repository_id}:events")))
+    return InlineKeyboardMarkup(rows)
+
+def integration_delivery_text(item: dict):
+    return f"<b>Webhook delivery</b>\n\n<code>{escape(str(item.get('delivery_id', '')))}</code>\n{escape(item.get('event', 'event'))} · <code>{escape(item.get('status', 'unknown'))}</code>" + (f"\n\n{escape(item.get('error', ''))}" if item.get("error") else "")
+
+def integration_delivery_actions(repository_id: int, delivery_id: str, failed: bool):
+    rows = []
+    if failed:
+        rows.append(_row((DELIVERY_RETRY, f"delivery:{repository_id}:{delivery_id}:retry")))
+    rows.append(_row((DELIVERY_BACK, f"integration:{repository_id}:deliveries")))
     return InlineKeyboardMarkup(rows)
 
 def integration_events_text(full_name: str, events: list[str], active: bool):
