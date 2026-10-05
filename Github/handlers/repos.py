@@ -2,7 +2,7 @@ from pyrogram import filters
 from ..buttons import repository, back, files, files_text, repo_home, error_message, BRANCHES
 from ..state import BrowserSession, SessionStore
 
-def register(app, service, sessions: SessionStore):
+def register(app, service, sessions: SessionStore, store=None):
     @app.on_callback_query(filters.regex(r"^repo:"))
     async def handle_repository(client, query):
         await query.answer()
@@ -12,6 +12,9 @@ def register(app, service, sessions: SessionStore):
             if len(parts) == 3 and parts[1].isdigit():
                 repository_id = int(parts[1])
                 repo = await service.get_by_id(repository_id)
+                if store:
+                    await store.add_repository(query.from_user.id, repo)
+                    await store.set_current_repository(query.from_user.id, repository_id)
                 owner = repo["owner"]["login"]
                 name = repo["name"]
                 branch = repo.get("default_branch", "main")
