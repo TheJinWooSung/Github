@@ -1,6 +1,6 @@
 <div align="center">
 
-# GitHub for Telegram
+# GitHub
 
 **A focused GitHub control center built for Telegram.**
 
