@@ -1,5 +1,5 @@
 from pyrogram import filters
-from ..buttons import repositories, repository, back, repository_list, repo_home, error_message, FILES, BRANCHES
+from ..buttons import repositories, repository, back, repository_list, repo_home, error_message, FILES, BRANCHES, files, files_text
 
 def register(app, service):
     @app.on_message(filters.command("repos"))
@@ -15,12 +15,22 @@ def register(app, service):
     async def handle_repository(client, query):
         data = query.data
         await query.answer()
-        if data == "repo:files":
-            await query.message.edit_text(f"<b>{FILES}</b>", reply_markup=back())
-            return
-        if data == "repo:branches":
-            await query.message.edit_text(f"<b>{BRANCHES}</b>", reply_markup=back())
-            return
+        parts = data.split(":")
+        if len(parts) == 3 and parts[1].isdigit():
+            repository_id = int(parts[1])
+            repo = await service.get_by_id(repository_id)
+            owner = repo["owner"]["login"]
+            name = repo["name"]
+            branch = repo.get("default_branch", "main")
+            if parts[2] == "files":
+                items = await service.contents(owner, name, "", branch)
+                await query.message.edit_text(files_text(owner, name, branch, "", items), reply_markup=files(items, repository_id))
+                return
+            if parts[2] == "branches":
+                items = await service.branches(owner, name)
+                body = f"<b>{BRANCHES}</b>\\n\\n" + "\\n".join(f"<code>{item.get('name', 'branch')}</code>" for item in items[:30])
+                await query.message.edit_text(body, reply_markup=back(f"repo:{repository_id}"))
+                return
         if data.count(":") == 1:
             repository_id = int(data.split(":", 1)[1])
             repo = await service.get_by_id(repository_id)
