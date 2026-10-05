@@ -49,26 +49,25 @@ def register(app, service, sessions: SessionStore):
 
     @app.on_message(filters.text & ~filters.command(["start", "repos"]))
     async def handle_editor_message(client, message):
-        active = None
-        token = None
         token = await sessions.active(message.from_user.id)
-        active = await sessions.get(token) if token else None
-        if not active:
+        session = await sessions.get(token) if token else None
+        if not session:
             return
-        active.content = message.text
-        active.status = "awaiting_message"
-        await sessions.set(token, active)
-        await message.reply_text("<b>Commit message</b>\n\nSend the commit message for this change.", reply_markup=back())
+        if session.status == "awaiting_content":
+            session.content = message.text
+            session.status = "awaiting_message"
+            await sessions.set(token, session)
+            await message.reply_text("<b>Commit message</b>\\n\\nSend the commit message for this change.", reply_markup=back())
+            return
+        if session.status == "awaiting_message":
+            session.message = message.text.strip()
+            session.status = "ready"
+            await sessions.set(token, session)
+            additions = sum(1 for line in (session.content or "").splitlines() if line.strip())
+            preview = commit_preview(CommitView(f"{session.owner}/{session.name}", session.branch, 1, additions, 0, session.message))
+            await message.reply_text(preview, reply_markup=commit_review(token))
+            return
 
-    @app.on_message(filters.text & ~filters.command(["start", "repos"]))
-    async def handle_commit_message(client, message):
-        for key, value in list(sessions.memory.items()):
-            if value.user_id == message.from_user.id and value.status == "awaiting_message":
-                value.message = message.text.strip()
-                value.status = "ready"
-                await sessions.set(key, value)
-                await message.reply_text(f"<b>Review changes</b>\n\n<code>{value.owner}/{value.name}</code> · <code>{value.branch}</code>\n\nFILE  <code>{value.path}</code>\n\n<b>Commit message</b>\n<code>{value.message}</code>\n\nConfirm this commit?", reply_markup=back(f"commit:{key}:confirm"))
-                return
     @app.on_callback_query(filters.regex(r"^commit:"))
     async def handle_commit(client, query):
         await query.answer()
