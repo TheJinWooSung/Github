@@ -158,13 +158,17 @@ def build_web(bot, oauth, sessions, store):
                 continue
             if settings.get(f"mute:{repository_id}", False):
                 continue
+            if integration.get("active", True) is False:
+                continue
+            if x_github_event not in (integration.get("events") or []):
+                continue
             if not await store.claim_delivery(x_github_delivery, integration["telegram_id"], repository_id, x_github_event, number, 0):
                 continue
             try:
                 message = await bot.app.send_message(integration["telegram_id"], text)
                 await store.save_delivery(x_github_delivery, integration["telegram_id"], repository_id, x_github_event, number, message.id)
-            except Exception:
-                await store.fail_delivery(x_github_delivery, integration["telegram_id"])
+            except Exception as exc:
+                await store.fail_delivery(x_github_delivery, integration["telegram_id"], str(exc))
         return {"status": "ok"}
 
     return app
