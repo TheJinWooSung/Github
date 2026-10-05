@@ -94,3 +94,31 @@ def error_message(message: str | None = None):
 
 def commit_preview(data: CommitView):
     return f"<b>{REVIEW_CHANGES}</b>\n\n<code>{escape(data.repository)}</code> · <code>{escape(data.branch)}</code>\n\n{FILES}  <b>{data.files}</b>\n{ADDED}  <b>+{data.additions}</b>\n{REMOVED}  <b>-{data.deletions}</b>\n\n<b>{COMMIT_MESSAGE}</b>\n<code>{escape(data.message)}</code>\n\n{CONFIRM_COMMIT}"
+
+
+def files(items, repository_id: int):
+    rows = []
+    for index, item in enumerate(items[:20]):
+        name = item.get("name", "item")
+        label = f"DIR  {name}" if item.get("type") == "dir" else name
+        rows.append(_row((label[:55], f"file:{repository_id}:{index}")))
+    rows.append(_row((BACK, f"repo:{repository_id}")))
+    return InlineKeyboardMarkup(rows)
+
+def file_view(repository_id: int):
+    return InlineKeyboardMarkup([_row(("Edit", f"edit:{repository_id}")), _row((BACK, f"repo:{repository_id}:files"))])
+
+def files_text(owner: str, name: str, branch: str, path: str, items):
+    title = f"<b>{escape(owner)}/{escape(name)}</b>  <code>{escape(branch)}</code>"
+    location = f"\n\n<code>/{escape(path)}</code>" if path else ""
+    if not items:
+        return title + location + "\n\n" + EMPTY
+    lines = [title + location]
+    for item in items[:20]:
+        marker = "DIR" if item.get("type") == "dir" else "FILE"
+        lines.append(f"\n{marker}  <code>{escape(item.get('name', 'item'))}</code>")
+    return "".join(lines)
+
+def file_text(owner: str, name: str, path: str, content: str, branch: str):
+    body = content[:3500]
+    return f"<b>{escape(owner)}/{escape(name)}</b>\n\n<code>{escape(path)}</code>\n<code>{escape(branch)}</code>\n\n<pre>{escape(body)}</pre>"
