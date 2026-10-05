@@ -394,7 +394,7 @@ For production, provide a public HTTPS endpoint, persistent MongoDB/Redis instan
 
 ### Remaining product expansion
 
-- [x] Multi-file commit staging UI
+- [ ] Multi-file commit staging UI
 - [ ] Telegram WebApp editor
 - [ ] Rich interactive diff viewer
 - [x] GitHub Discussions UI and answer workflow
