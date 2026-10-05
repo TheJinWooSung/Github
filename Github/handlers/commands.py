@@ -186,7 +186,7 @@ def register(app, store: GitHubStore, oauth):
         for item in items:
             marker = " · current" if (await store.current_repository(message.from_user.id) or {}).get("repository_id") == item["repository_id"] else ""
             lines.append(f"\n<code>{escape(item['full_name'])}</code>{marker}")
-        await message.reply_text("".join(lines))
+        await message.reply_text("".join(lines), reply_markup=repository_buttons(items))
 
     @app.on_message(filters.command("repo"))
     async def repo(client, message):
