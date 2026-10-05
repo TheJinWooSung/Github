@@ -4,7 +4,10 @@ import httpx
 from cryptography.hazmat.primitives import serialization
 
 class GitHubAppAuth:
-    def __init__(self, app_id: int, private_key: str):
+    def __init__(self, app_id: int, private_key: str, timeout: float = 30, api_version: str = "2026-03-10", base_url: str = "https://api.github.com"):
+        self.timeout = timeout
+        self.api_version = api_version
+        self.base_url = base_url.rstrip("/")
         self.app_id = app_id
         self.private_key = private_key.encode()
 
@@ -15,8 +18,8 @@ class GitHubAppAuth:
 
     async def installation_token(self, installation_id: int) -> dict:
         token = self.jwt()
-        headers = {"Accept": "application/vnd.github+json", "Authorization": f"Bearer {token}", "X-GitHub-Api-Version": "2026-03-10"}
-        async with httpx.AsyncClient(base_url="https://api.github.com", timeout=30) as client:
+        headers = {"Accept": "application/vnd.github+json", "Authorization": f"Bearer {token}", "X-GitHub-Api-Version": self.api_version}
+        async with httpx.AsyncClient(base_url=self.base_url, timeout=self.timeout) as client:
             response = await client.post(f"/app/installations/{installation_id}/access_tokens", headers=headers)
             response.raise_for_status()
             return response.json()
