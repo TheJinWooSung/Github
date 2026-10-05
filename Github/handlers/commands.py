@@ -533,9 +533,9 @@ def register(app, store: GitHubStore, oauth):
                 title = "Issues"
             else:
                 base = f"repo:{repo['full_name']} {query}" if repo else query
-                data = await service.search(base)
+                data = await service.client.request("GET", "/search/code", params={"q": base, "per_page": 20})
                 items = data.get("items", [])
-                title = "Repositories"
+                title = "Code"
             lines = [f"<b>{title}</b>"]
             for item in items[:20]:
                 lines.append(f"\n<code>{escape(item.get('full_name') or item.get('title') or item.get('name', 'result'))}</code>")
@@ -587,10 +587,16 @@ def register(app, store: GitHubStore, oauth):
             value = message.command[1].lower()
             if value in {"on", "off"}:
                 await store.save_setting(message.from_user.id, "notifications_enabled", value == "on")
-                current_settings["notifications_enabled"] = value == "on"
+            elif value.startswith("events="):
+                events = [item.strip() for item in value[7:].split(",") if item.strip()]
+                allowed = {"push", "pull_request", "issues", "release", "workflow_run", "star", "fork", "create", "delete", "deployment"}
+                events = [item for item in events if item in allowed]
+                if events:
+                    await store.save_setting(message.from_user.id, "events", events)
+            current_settings = await store.get_settings(message.from_user.id)
         enabled = current_settings.get("notifications_enabled", True)
         events = current_settings.get("events", ["push", "pull_request", "issues", "release", "workflow_run", "star"])
-        await message.reply_text(f"<b>Settings</b>\n\nnotifications <code>{'on' if enabled else 'off'}</code>\nevents <code>{escape(', '.join(events))}</code>\n\nUse /settings on or /settings off.")
+        await message.reply_text(f"<b>Settings</b>\n\nnotifications <code>{'on' if enabled else 'off'}</code>\nevents <code>{escape(', '.join(events))}</code>\n\n/settings on|off\n/settings events=push,pull_request,issues")
 
     @app.on_message(filters.command("reload"))
     async def reload(client, message):
