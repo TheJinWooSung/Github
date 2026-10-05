@@ -1,6 +1,5 @@
 from pyrogram import filters
-from ..buttons import start
-from ..text import start as start_text
+from ..buttons import start, start_text
 
 def register(app):
     @app.on_message(filters.command("start"))
