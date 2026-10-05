@@ -50,7 +50,7 @@ class GitHubOAuth:
         auth = httpx.BasicAuth(self.client_id, self.client_secret)
         headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": self.api_version}
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.request("DELETE", f"https://api.github.com/applications/{self.client_id}/grant", auth=auth, headers=headers, json={"access_token": access_token})
+            response = await client.request("DELETE", f"https://api.github.com/applications/{self.client_id}/token", auth=auth, headers=headers, json={"access_token": access_token})
         if response.status_code not in {204, 404}:
             response.raise_for_status()
 
