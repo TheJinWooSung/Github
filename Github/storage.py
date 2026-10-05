@@ -54,6 +54,9 @@ class GitHubStore:
     async def notification(self, telegram_id: int, message_id: int):
         return await self.db["github_deliveries"].find_one({"telegram_id": telegram_id, "message_id": message_id})
 
+    async def integration(self, telegram_id: int, repository_id: int):
+        return await self.integrations.find_one({"telegram_id": telegram_id, "repository_id": repository_id})
+
     async def add_integration(self, telegram_id: int, repo: dict, hook_id: int | None = None) -> None:
         now = datetime.now(timezone.utc)
         await self.integrations.update_one({"telegram_id": telegram_id, "repository_id": repo["id"]}, {"$set": {"repository_id": repo["id"], "full_name": repo["full_name"], "owner": repo["owner"]["login"], "name": repo["name"], "private": repo.get("private", False), "hook_id": hook_id, "updated_at": now}, "$setOnInsert": {"created_at": now}}, upsert=True)
