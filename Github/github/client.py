@@ -29,9 +29,30 @@ class GitHubClient:
             raise RuntimeError("GitHub authentication token is not configured")
         supplied = kwargs.pop("headers", None)
         headers = self.headers(supplied)
-        async with self._lock:
-            async with httpx.AsyncClient(base_url=self.base_url, timeout=self.timeout, follow_redirects=True) as client:
-                response = await client.request(method, path, headers=headers, **kwargs)
+        retryable = method.upper() in {"GET", "HEAD", "OPTIONS"}
+        last_error = None
+        for attempt in range(3):
+            try:
+                async with self._lock:
+                    async with httpx.AsyncClient(base_url=self.base_url, timeout=self.timeout, follow_redirects=True) as client:
+                        response = await client.request(method, path, headers=headers, **kwargs)
+            except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.WriteError, httpx.ReadError) as exc:
+                last_error = exc
+                if not retryable or attempt == 2:
+                    raise RuntimeError(f"GitHub connection failed: {exc}") from exc
+                await asyncio.sleep(0.5 * (2 ** attempt))
+                continue
+            if retryable and response.status_code in {429, 500, 502, 503, 504} and attempt < 2:
+                retry_after = response.headers.get("Retry-After")
+                try:
+                    delay = float(retry_after) if retry_after else 0.5 * (2 ** attempt)
+                except ValueError:
+                    delay = 0.5 * (2 ** attempt)
+                await asyncio.sleep(min(delay, 30.0))
+                continue
+            break
+        if last_error:
+            raise RuntimeError(f"GitHub connection failed: {last_error}") from last_error
         if response.status_code == 204:
             return None
         if response.status_code == 401:
