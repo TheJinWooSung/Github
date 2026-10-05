@@ -9,6 +9,10 @@ from ..storage import GitHubStore
 AUTH_REQUIRED = "Connect GitHub first with /connect."
 REPLY_REQUIRED = "Reply to a pull request notification."
 INVALID_METHOD = "Use merge, squash, or rebase."
+MERGE_CONFIRMATION = "Merge preview ready. Reply to the PR notification with /merge confirm to continue."
+REVIEW_USAGE = "Use /requestchanges review text."
+REQUEST_USAGE = "Use /request @username."
+PR_SEARCH_USAGE = "Use /pr keyword."
 
 def register(app, store: GitHubStore, oauth):
     async def service_for(user_id: int):
@@ -24,11 +28,32 @@ def register(app, store: GitHubStore, oauth):
         service = await service_for(message.from_user.id)
         if not service:
             return None, None, None
-        repo = await service.get_by_id(notification["repository_id"])
+        repo = await service.get_by_id(int(notification["repository_id"]))
         return service, repo, int(notification["number"])
 
     async def result(message, title, number):
         await message.reply_text(f"<b>{escape(title)}</b>\n\n<code>#{number}</code>")
+
+    @app.on_message(filters.command("pr"))
+    async def search_pr(client, message):
+        service = await service_for(message.from_user.id)
+        if not service:
+            await message.reply_text(AUTH_REQUIRED)
+            return
+        query = message.text.split(maxsplit=1)[1].strip() if len(message.text.split(maxsplit=1)) > 1 else ""
+        if not query:
+            await message.reply_text(PR_SEARCH_USAGE)
+            return
+        try:
+            data = await service.search_issues(f"is:pr {query}")
+            items = data.get("items", [])
+            lines = ["<b>Pull requests</b>"]
+            for item in items[:20]:
+                repo = item.get("repository_url", "").rsplit("/repos/", 1)[-1]
+                lines.append(f"\n<code>#{item.get('number')}</code> {escape(item.get('title', 'Pull request'))[:100]}\n{escape(repo)}")
+            await message.reply_text("".join(lines) if len(lines) > 1 else "<b>No pull requests found.</b>")
+        except Exception as exc:
+            await message.reply_text(error_message(str(exc)))
 
     @app.on_message(filters.command("approve"))
     async def approve(client, message):
@@ -56,7 +81,7 @@ def register(app, store: GitHubStore, oauth):
             return
         body = message.text.split(maxsplit=1)[1].strip() if len(message.text.split(maxsplit=1)) > 1 else ""
         if not body:
-            await message.reply_text("Use /requestchanges review text.")
+            await message.reply_text(REVIEW_USAGE)
             return
         try:
             await service.submit_review(repo["owner"]["login"], repo["name"], number, "REQUEST_CHANGES", body)
@@ -73,7 +98,7 @@ def register(app, store: GitHubStore, oauth):
         if not repo:
             await message.reply_text(REPLY_REQUIRED)
             return
-        method = message.command[1].lower() if len(message.command) > 1 else "merge"
+        method = message.command[1].lower() if len(message.command) > 1 and message.command[1].lower() != "confirm" else "merge"
         if method not in {"merge", "squash", "rebase"}:
             await message.reply_text(INVALID_METHOD)
             return
@@ -81,6 +106,11 @@ def register(app, store: GitHubStore, oauth):
             item = await service.pull_request(repo["owner"]["login"], repo["name"], number)
             if item.get("merged"):
                 await result(message, "Pull request is already merged", number)
+                return
+            if len(message.command) < 2 or message.command[1].lower() != "confirm":
+                mergeable = item.get("mergeable")
+                state = item.get("mergeable_state", "unknown")
+                await message.reply_text(f"<b>Merge pull request</b>\n\n<code>#{number}</code>\nmethod <code>{method}</code>\nmergeable <code>{escape(str(mergeable))}</code> · <code>{escape(state)}</code>\n\n{MERGE_CONFIRMATION}")
                 return
             head_sha = item.get("head", {}).get("sha")
             merged = await service.merge_pull_request(repo["owner"]["login"], repo["name"], number, method, head_sha)
@@ -101,7 +131,7 @@ def register(app, store: GitHubStore, oauth):
         try:
             draft = message.command[0].lower() == "draft"
             await service.update_pull_request(repo["owner"]["login"], repo["name"], number, draft=draft)
-            await result(message, "Pull request updated", number)
+            await result(message, "Pull request converted to draft" if draft else "Pull request marked ready for review", number)
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
 
@@ -115,11 +145,11 @@ def register(app, store: GitHubStore, oauth):
             await message.reply_text(REPLY_REQUIRED)
             return
         try:
-            items = await service.pull_request_files(repo["owner"]["login"], repo["name"], number)
+            items = await service.pull_request_files(repo["owner"]["login"], repo["name"], number, per_page=100)
             lines = [f"<b>Files · #{number}</b>"]
-            for item in items[:40]:
+            for item in items[:80]:
                 lines.append(f"\n<code>{escape(item.get('status', 'modified'))}</code> {escape(item.get('filename', 'file'))} · +{item.get('additions', 0)} -{item.get('deletions', 0)}")
-            await message.reply_text("".join(lines))
+            await message.reply_text("".join(lines) if len(lines) > 1 else "<b>No changed files.</b>")
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
 
@@ -133,9 +163,11 @@ def register(app, store: GitHubStore, oauth):
             await message.reply_text(REPLY_REQUIRED)
             return
         try:
-            text = await service.pull_request_diff(repo["owner"]["login"], repo["name"], number)
-            text = text[-7000:]
-            await message.reply_text(f"<pre>{escape(text)}</pre>")
+            diff_text = await service.pull_request_diff(repo["owner"]["login"], repo["name"], number)
+            if not diff_text:
+                await message.reply_text("<b>No diff available.</b>")
+                return
+            await message.reply_text(f"<pre>{escape(diff_text[-12000:])}</pre>")
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
 
@@ -153,14 +185,25 @@ def register(app, store: GitHubStore, oauth):
             item = await service.pull_request(owner, name, number)
             action = message.command[0].lower()
             if action == "reviews":
-                reviews = await service.pull_request_reviews(owner, name, number)
+                reviews = await service.pull_request_reviews(owner, name, number, per_page=100)
                 lines = [f"<b>Reviews · #{number}</b>"]
-                lines.extend(f"\n<code>{escape(item.get('user', {}).get('login', 'reviewer'))}</code> · {escape(review.get('state', 'PENDING'))}" for review in reviews for item in [review])
+                for review in reviews[-50:]:
+                    reviewer = escape(review.get("user", {}).get("login", "unknown"))
+                    state = escape(review.get("state", "PENDING"))
+                    body = escape(review.get("body") or "")
+                    lines.append(f"\n<code>{reviewer}</code> · <code>{state}</code>")
+                    if body:
+                        lines.append(f"\n{body[:300]}")
             elif action == "mergeable":
-                lines = [f"<b>Mergeable · #{number}</b>", f"\nstate: <code>{escape(str(item.get('mergeable')))}</code>", f"\nstatus: <code>{escape(item.get('mergeable_state', 'unknown'))}</code>"]
+                lines = [f"<b>Mergeable · #{number}</b>", f"\nmergeable <code>{escape(str(item.get('mergeable')))}</code>", f"\nstate <code>{escape(item.get('mergeable_state', 'unknown'))}</code>"]
             else:
-                status = await service.client.request("GET", f"/repos/{owner}/{name}/commits/{item.get('head', {}).get('sha')}/status")
-                lines = [f"<b>Checks · #{number}</b>", f"\n<code>{escape(status.get('state', 'unknown'))}</code> · {status.get('total_count', 0)}"]
+                sha = item.get("head", {}).get("sha")
+                status = await service.client.request("GET", f"/repos/{owner}/{name}/commits/{sha}/status")
+                checks = await service.client.request("GET", f"/repos/{owner}/{name}/commits/{sha}/check-runs", params={"per_page": 100})
+                lines = [f"<b>Checks · #{number}</b>", f"\nstatus <code>{escape(status.get('state', 'unknown'))}</code> · {status.get('total_count', 0)}", f"\ncheck runs {len(checks.get('check_runs', []))}"]
+                for check in checks.get("check_runs", [])[:20]:
+                    conclusion = check.get("conclusion") or check.get("status") or "unknown"
+                    lines.append(f"\n<code>{escape(check.get('name', 'check'))}</code> · {escape(conclusion)}")
             await message.reply_text("".join(lines))
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
@@ -175,12 +218,16 @@ def register(app, store: GitHubStore, oauth):
             await message.reply_text(REPLY_REQUIRED)
             return
         if len(message.command) < 2:
-            await message.reply_text("Use /request @username.")
+            await message.reply_text(REQUEST_USAGE)
             return
+        reviewer = message.command[1].lstrip("@")
         try:
-            await service.request_reviewers(repo["owner"]["login"], repo["name"], number, reviewers=[message.command[1].lstrip("@")])
+            if reviewer.startswith("team:"):
+                await service.request_reviewers(repo["owner"]["login"], repo["name"], number, team_reviewers=[reviewer[5:]])
+            else:
+                await service.request_reviewers(repo["owner"]["login"], repo["name"], number, reviewers=[reviewer])
             await result(message, "Reviewer requested", number)
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
 
-    return approve, request_changes, merge, draft_state, files, diff, pr_status, request_reviewer
+    return search_pr, approve, request_changes, merge, draft_state, files, diff, pr_status, request_reviewer
