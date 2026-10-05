@@ -230,7 +230,7 @@ def pull_requests(items, repository_id: int, state: str = "open"):
 
 def pull_request_view(repository_id: int, number: int, state: str, draft: bool = False):
     rows = [
-        _row((PR_FILES, f"pr:{repository_id}:{number}:files"), (PR_COMMITS, f"pr:{repository_id}:{number}:commits")),
+        _row((PR_FILES, f"pr:{repository_id}:{number}:files"), (PR_COMMITS, f"pr:{repository_id}:{number}:commits"), ("Diff", f"pr:{repository_id}:{number}:diff")),
         _row((PR_REVIEWS, f"pr:{repository_id}:{number}:reviews"), (PR_COMMENT, f"pr:{repository_id}:{number}:comment")),
     ]
     if state == "open":
