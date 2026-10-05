@@ -34,6 +34,31 @@ def register(app, service, sessions: SessionStore, store=None):
                     body = f"<b>Tags</b>\n\n" + ("\n".join(f"<code>{item.get('name', 'tag')}</code>" for item in items[:30]) or "No tags.")
                     await query.message.edit_text(body, reply_markup=back(f"repo:{repository_id}"))
                     return
+                if parts[2] == "commits":
+                    items = await service.commits(owner, name, per_page=30)
+                    body = f"<b>Commits · {repo['full_name']}</b>\n\n" + ("\n".join(f"<code>{item.get('sha', '')[:10]}</code> {(item.get('commit', {}).get('message') or 'commit').split(chr(10), 1)[0][:100]}" for item in items) or "No commits.")
+                    await query.message.edit_text(body, reply_markup=back(f"repo:{repository_id}"))
+                    return
+                if parts[2] == "issues":
+                    items = await service.issues(owner, name, per_page=30)
+                    body = f"<b>Issues · {repo['full_name']}</b>\n\n" + ("\n".join(f"<code>#{item.get('number')}</code> {item.get('title', 'Issue')[:100]}" for item in items if not item.get('pull_request')) or "No open issues.")
+                    await query.message.edit_text(body, reply_markup=back(f"repo:{repository_id}"))
+                    return
+                if parts[2] == "releases":
+                    items = await service.releases(owner, name, per_page=20)
+                    body = f"<b>Releases · {repo['full_name']}</b>\n\n" + ("\n".join(f"<code>{item.get('tag_name', 'release')}</code> {item.get('name') or ''}" for item in items) or "No releases.")
+                    await query.message.edit_text(body, reply_markup=back(f"repo:{repository_id}"))
+                    return
+                if parts[2] == "contributors":
+                    items = await service.contributors(owner, name, per_page=30)
+                    body = f"<b>Contributors · {repo['full_name']}</b>\n\n" + ("\n".join(f"<code>{item.get('login', 'unknown')}</code> · {item.get('contributions', 0)}" for item in items[:30]) or "No contributors.")
+                    await query.message.edit_text(body, reply_markup=back(f"repo:{repository_id}"))
+                    return
+                if parts[2] == "deployments":
+                    items = await service.deployments(owner, name, per_page=20)
+                    body = f"<b>Deployments · {repo['full_name']}</b>\n\n" + ("\n".join(f"<code>{item.get('id')}</code> · {item.get('environment') or 'unknown'}" for item in items) or "No deployments.")
+                    await query.message.edit_text(body, reply_markup=back(f"repo:{repository_id}"))
+                    return
             if data.count(":") == 1:
                 repository_id = int(data.split(":", 1)[1])
                 repo = await service.get_by_id(repository_id)
