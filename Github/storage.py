@@ -144,7 +144,29 @@ class GitHubStore:
     async def fail_delivery(self, delivery_id: str, telegram_id: int, error: str | None = None) -> None:
         await self.deliveries.update_one({"delivery_id": delivery_id, "telegram_id": telegram_id}, {"$set": {"status": "failed", "error": error, "failed_at": datetime.now(timezone.utc)}})
 
-    async def sync_webhook_delivery(self, telegram_id: int, repository_id: int, item: dict) -> None:\n        delivery_id = str(item.get("id", ""))\n        if not delivery_id:\n            return\n        now = datetime.now(timezone.utc)\n        await self.deliveries.update_one(\n            {"delivery_id": delivery_id, "telegram_id": telegram_id},\n            {"$set": {\n                "repository_id": repository_id,\n                "event": item.get("event", "event"),\n                "action": item.get("action"),\n                "status": "sent" if 200 <= int(item.get("status_code") or 0) < 400 else "failed",\n                "status_code": item.get("status_code"),\n                "delivered_at": item.get("delivered_at"),\n                "duration": item.get("duration"),\n                "redelivery": bool(item.get("redelivery")),\n                "guid": item.get("guid"),\n                "updated_at": now,\n            }, "$setOnInsert": {"created_at": now}},\n            upsert=True,\n        )\n\n    async def list_deliveries(self, telegram_id: int, repository_id: int, limit: int = 25):
+    async def sync_webhook_delivery(self, telegram_id: int, repository_id: int, item: dict) -> None:
+        delivery_id = str(item.get("id", ""))
+        if not delivery_id:
+            return
+        now = datetime.now(timezone.utc)
+        await self.deliveries.update_one(
+            {"delivery_id": delivery_id, "telegram_id": telegram_id},
+            {"$set": {
+                "repository_id": repository_id,
+                "event": item.get("event", "event"),
+                "action": item.get("action"),
+                "status": "sent" if 200 <= int(item.get("status_code") or 0) < 400 else "failed",
+                "status_code": item.get("status_code"),
+                "delivered_at": item.get("delivered_at"),
+                "duration": item.get("duration"),
+                "redelivery": bool(item.get("redelivery")),
+                "guid": item.get("guid"),
+                "updated_at": now,
+            }, "$setOnInsert": {"created_at": now}},
+            upsert=True,
+        )
+
+    async def list_deliveries(self, telegram_id: int, repository_id: int, limit: int = 25):
         return await self.deliveries.find({"telegram_id": telegram_id, "repository_id": repository_id}).sort("created_at", -1).to_list(length=limit)
 
     async def delivery(self, telegram_id: int, delivery_id: str):
