@@ -6,9 +6,11 @@ API = "https://api.github.com"
 API_VERSION = "2026-03-10"
 
 class GitHubClient:
-    def __init__(self, token: str, timeout: float = 30):
+    def __init__(self, token: str, timeout: float = 30, base_url: str = API, api_version: str = API_VERSION):
         self.token = token
         self.timeout = timeout
+        self.base_url = base_url.rstrip("/")
+        self.api_version = api_version
         self._lock = asyncio.Lock()
 
     def headers(self, extra: dict[str, str] | None = None) -> dict[str, str]:
@@ -28,7 +30,7 @@ class GitHubClient:
         supplied = kwargs.pop("headers", None)
         headers = self.headers(supplied)
         async with self._lock:
-            async with httpx.AsyncClient(base_url=API, timeout=self.timeout, follow_redirects=True) as client:
+            async with httpx.AsyncClient(base_url=self.base_url, timeout=self.timeout, follow_redirects=True) as client:
                 response = await client.request(method, path, headers=headers, **kwargs)
         if response.status_code == 204:
             return None
