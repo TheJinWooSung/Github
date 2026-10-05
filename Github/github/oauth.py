@@ -44,6 +44,14 @@ class GitHubOAuth:
             response.raise_for_status()
             return response.json()
 
+    async def revoke(self, access_token: str) -> None:
+        auth = httpx.BasicAuth(self.client_id, self.client_secret)
+        headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2026-03-10"}
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.request("DELETE", f"https://api.github.com/applications/{self.client_id}/grant", auth=auth, headers=headers, json={"access_token": access_token})
+        if response.status_code not in {204, 404}:
+            response.raise_for_status()
+
     async def refresh(self, refresh_token: str) -> OAuthGrant:
         payload = {"client_id": self.client_id, "client_secret": self.client_secret, "grant_type": "refresh_token", "refresh_token": refresh_token}
         headers = {"Accept": "application/json", "X-GitHub-Api-Version": "2026-03-10"}
