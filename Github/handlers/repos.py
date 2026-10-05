@@ -26,5 +26,5 @@ def register(app, service):
             owner, name = full_name.split("/", 1)
             repo = await service.get(owner, name)
             branch = repo.get("default_branch", "main")
-            await query.message.edit_text(repo_home(owner, name, branch, repo.get("description")), reply_markup=repository())
+            await query.message.edit_text(repo_home(owner, name, branch, repo.get("description")), reply_markup=repository(int(repo.get("id", 0))))
     return handle_repositories, handle_repository
