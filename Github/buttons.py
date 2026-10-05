@@ -41,6 +41,14 @@ COMMIT_CANCELLED = "Commit cancelled"
 COMMIT_CREATED = "Commit created"
 UNCHANGED_FILE = "No changes were made to the file."
 INVALID_COMMIT_MESSAGE = "Commit message is required."
+NOT_CONNECTED = "Connect GitHub first with /connect."
+INTEGRATION_USAGE = "Usage: /newintegration owner/repository"
+INTEGRATION_ADDED = "Repository integration added."
+INTEGRATION_EXISTS = "Repository integration already exists."
+INTEGRATION_REMOVED = "Repository integration removed."
+INTEGRATION_NOT_FOUND = "Repository integration was not found."
+INTEGRATIONS_EMPTY = "No repository integrations are configured."
+INTEGRATION_LIST = "Repository integrations"
 
 @dataclass(frozen=True)
 class CommitView:
@@ -60,8 +68,12 @@ def start(connect_url: str | None = None):
         rows.insert(0, [InlineKeyboardButton(CONNECT, url=connect_url)])
     return InlineKeyboardMarkup(rows)
 
-def integrations():
-    return InlineKeyboardMarkup([_row((INTEGRATIONS, "integrations:list")), _row((CONNECT, "connect:start"))])
+def integrations(items):
+    rows = []
+    for item in items[:50]:
+        rows.append(_row((item["full_name"][:55], f"integration:{item["repository_id"]}:delete")))
+    rows.append(_row((CONNECT, "connect:start")))
+    return InlineKeyboardMarkup(rows)
 
 def connect_text():
     return f"<b>{CONNECT}</b>\n\n{CONNECT_HINT}"
