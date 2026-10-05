@@ -212,6 +212,7 @@ Github/
 │   └── repositories.py
 │
 ├── handlers/
+│   ├── actions.py
 │   ├── commits.py
 │   ├── files.py
 │   ├── integrations.py
@@ -357,13 +358,16 @@ For production, provide a public HTTPS endpoint, persistent MongoDB/Redis instan
 - [x] Redis sessions
 - [x] FastAPI service
 - [x] Docker deployment
+- [x] GitHub Actions workflow browser
+- [x] Workflow dispatch
+- [x] Workflow run monitoring
+- [x] Run cancellation and reruns
+- [x] Workflow jobs and logs
+- [x] Workflow artifacts
 
 ### Next
 
-- [ ] GitHub Actions control center
-- [ ] Workflow dispatch with inputs
-- [ ] Workflow runs, jobs and logs
-- [ ] Artifacts
+- [ ] Workflow dispatch inputs
 - [ ] Issue management
 - [ ] Reviewer assignment UI
 - [ ] Multi-file commit staging
