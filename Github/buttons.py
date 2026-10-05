@@ -29,6 +29,15 @@ BRANCH = "Branch"
 SIZE = "Size"
 EMPTY = "Nothing found"
 ERROR = "Something went wrong"
+EDIT_FILE = "Edit file"
+EDIT_INSTRUCTION = "Send the complete new file content as your next message."
+COMMIT_INSTRUCTION = "Send the commit message for this change."
+SESSION_EXPIRED = "Edit session expired"
+COMMIT_SESSION_EXPIRED = "Commit session expired"
+COMMIT_CANCELLED = "Commit cancelled"
+COMMIT_CREATED = "Commit created"
+UNCHANGED_FILE = "No changes were made to the file."
+INVALID_COMMIT_MESSAGE = "Commit message is required."
 
 @dataclass(frozen=True)
 class CommitView:
@@ -95,18 +104,17 @@ def error_message(message: str | None = None):
 def commit_preview(data: CommitView):
     return f"<b>{REVIEW_CHANGES}</b>\n\n<code>{escape(data.repository)}</code> · <code>{escape(data.branch)}</code>\n\n{FILES}  <b>{data.files}</b>\n{ADDED}  <b>+{data.additions}</b>\n{REMOVED}  <b>-{data.deletions}</b>\n\n<b>{COMMIT_MESSAGE}</b>\n<code>{escape(data.message)}</code>\n\n{CONFIRM_COMMIT}"
 
-
-def files(items, repository_id: int, path: str = ""):
+def files(items, browser_token: str, parent_token: str | None = None):
     rows = []
     for index, item in enumerate(items[:20]):
         name = item.get("name", "item")
         label = f"DIR  {name}" if item.get("type") == "dir" else name
-        rows.append(_row((label[:55], f"file:{repository_id}:{index}")))
-    rows.append(_row((BACK, f"repo:{repository_id}:files")))
+        rows.append(_row((label[:55], f"file:{browser_token}:{index}")))
+    rows.append(_row((BACK, f"browse:{parent_token}:back" if parent_token else "nav:back")))
     return InlineKeyboardMarkup(rows)
 
-def file_view(repository_id: int, token: str):
-    return InlineKeyboardMarkup([_row(("Edit", f"edit:{token}")), _row((BACK, f"repo:{repository_id}:files"))])
+def file_view(repository_id: int, edit_token: str, browser_token: str):
+    return InlineKeyboardMarkup([_row(("Edit", f"edit:{edit_token}")), _row((BACK, f"browse:{browser_token}:back"))])
 
 def files_text(owner: str, name: str, branch: str, path: str, items):
     title = f"<b>{escape(owner)}/{escape(name)}</b>  <code>{escape(branch)}</code>"
@@ -118,6 +126,15 @@ def files_text(owner: str, name: str, branch: str, path: str, items):
         marker = "DIR" if item.get("type") == "dir" else "FILE"
         lines.append(f"\n{marker}  <code>{escape(item.get('name', 'item'))}</code>")
     return "".join(lines)
+
+def edit_prompt(path: str):
+    return f"<b>{EDIT_FILE}</b>\n\n<code>{escape(path)}</code>\n\n{EDIT_INSTRUCTION}"
+
+def commit_prompt():
+    return f"<b>{COMMIT_MESSAGE}</b>\n\n{COMMIT_INSTRUCTION}"
+
+def commit_result(sha: str, path: str, message: str):
+    return f"<b>{COMMIT_CREATED}</b>\n\n<code>{escape(sha[:12])}</code>\n<code>{escape(path)}</code>\n\n{escape(message)}"
 
 def file_text(owner: str, name: str, path: str, content: str, branch: str):
     body = content[:3500]
