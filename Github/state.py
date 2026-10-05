@@ -6,6 +6,12 @@ from dataclasses import dataclass, asdict
 from redis.asyncio import Redis
 
 @dataclass
+class OAuthState:
+    telegram_id: int
+    verifier: str
+    expires_at: float = 0.0
+
+@dataclass
 class EditSession:
     user_id: int
     chat_id: int
@@ -42,15 +48,14 @@ class SessionStore:
         self.lock = asyncio.Lock()
 
     async def create(self, session):
-        token = secrets.token_urlsafe(9)
+        token = secrets.token_urlsafe(18)
         session.expires_at = time.time() + self.ttl
         await self.set(token, session)
         return token
 
     async def set(self, token: str, session) -> None:
-        key = self._key(token)
         if self.redis:
-            await self.redis.setex(key, self.ttl, json.dumps(asdict(session)))
+            await self.redis.setex(self._key(token), self.ttl, json.dumps(asdict(session)))
             if isinstance(session, EditSession):
                 await self.redis.setex(f"github:active:{session.user_id}", self.ttl, token)
             return
@@ -63,7 +68,11 @@ class SessionStore:
             if not value:
                 return None
             payload = json.loads(value)
-            return BrowserSession(**payload) if "parent_token" in payload else EditSession(**payload)
+            if "verifier" in payload:
+                return OAuthState(**payload)
+            if "parent_token" in payload:
+                return BrowserSession(**payload)
+            return EditSession(**payload)
         async with self.lock:
             session = self.memory.get(token)
             if not session:
@@ -93,9 +102,9 @@ class SessionStore:
         if self.redis:
             await self.redis.delete(self._key(token))
             if isinstance(session, EditSession):
-                active_key = f"github:active:{session.user_id}"
-                if await self.redis.get(active_key) == token:
-                    await self.redis.delete(active_key)
+                key = f"github:active:{session.user_id}"
+                if await self.redis.get(key) == token:
+                    await self.redis.delete(key)
             return
         async with self.lock:
             self.memory.pop(token, None)
