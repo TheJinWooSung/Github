@@ -51,6 +51,9 @@ class GitHubStore:
     async def integrations_for_repository(self, repository_id: int):
         return await self.integrations.find({"repository_id": repository_id}).to_list(length=100)
 
+    async def notification(self, telegram_id: int, message_id: int):
+        return await self.db["github_deliveries"].find_one({"telegram_id": telegram_id, "message_id": message_id})
+
     async def add_integration(self, telegram_id: int, repo: dict) -> None:
         now = datetime.now(timezone.utc)
         await self.integrations.update_one({"telegram_id": telegram_id, "repository_id": repo["id"]}, {"$set": {"repository_id": repo["id"], "full_name": repo["full_name"], "owner": repo["owner"]["login"], "name": repo["name"], "private": repo.get("private", False), "updated_at": now}, "$setOnInsert": {"created_at": now}}, upsert=True)
