@@ -13,6 +13,7 @@ from ..buttons import (
     ACTION_WORKFLOWS,
     ACTION_LOGS,
     ACTION_STEPS,
+    ACTION_NO_STEPS,
     ACTION_JOBS_EMPTY,
     ACTION_ARTIFACTS_EMPTY,
     ACTION_RUNS_EMPTY,
@@ -69,7 +70,7 @@ def register(app, store: GitHubStore, oauth):
         repository_id = int(repository_id)
         service = await service_for(query.from_user.id)
         if not service:
-            await query.message.edit_text(error_message("Connect GitHub first with /connect."))
+            await query.message.edit_text(error_message(ACTION_CONNECT_REQUIRED))
             return
         try:
             repo, owner, name = await repository(service, repository_id)
@@ -251,7 +252,7 @@ def register(app, store: GitHubStore, oauth):
             steps = item.get("steps") or []
             lines = [f"<b>{escape(item.get('name', ACTION_STEPS))}</b>", ""]
             if not steps:
-                lines.append("No steps found.")
+                lines.append(ACTION_NO_STEPS)
             else:
                 for step in steps:
                     status = step.get("conclusion") or step.get("status") or "unknown"
