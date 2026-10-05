@@ -45,8 +45,8 @@ def _row(*items):
 def start():
     return InlineKeyboardMarkup([_row((REPOSITORIES, "home:repos"), (SEARCH, "home:search")), _row((STARRED, "home:starred"), (SETTINGS, "home:settings"))])
 
-def repository():
-    return InlineKeyboardMarkup([_row((FILES, "repo:files"), (COMMITS, "repo:commits")), _row((BRANCHES, "repo:branches"), (TAGS, "repo:tags")), _row((PULL_REQUESTS, "repo:pulls"), (ISSUES, "repo:issues")), _row((ACTIONS, "repo:actions"), (RELEASES, "repo:releases")), _row((CONTRIBUTORS, "repo:contributors"), (DEPLOYMENTS, "repo:deployments")), _row((HOME, "nav:home"))])
+def repository(repository_id: int):
+    return InlineKeyboardMarkup([_row((FILES, f"repo:{repository_id}:files"), (COMMITS, f"repo:{repository_id}:commits")), _row((BRANCHES, f"repo:{repository_id}:branches"), (TAGS, f"repo:{repository_id}:tags")), _row((PULL_REQUESTS, f"repo:{repository_id}:pulls"), (ISSUES, f"repo:{repository_id}:issues")), _row((ACTIONS, f"repo:{repository_id}:actions"), (RELEASES, f"repo:{repository_id}:releases")), _row((CONTRIBUTORS, f"repo:{repository_id}:contributors"), (DEPLOYMENTS, f"repo:{repository_id}:deployments")), _row((HOME, "nav:home"))])
 
 def commit_review():
     return InlineKeyboardMarkup([_row(("Edit", "commit:edit"), ("Cancel", "commit:cancel")), _row(("Commit", "commit:confirm"))])
@@ -68,7 +68,7 @@ def branches(items):
     return InlineKeyboardMarkup(rows)
 
 def repositories(items):
-    rows = [_row((item["full_name"][:60], f"repo:{item['full_name']}")) for item in items[:20] if item.get("full_name")]
+    rows = [_row((item["full_name"][:60], f"repo:{item['id']}")) for item in items[:20] if item.get("full_name")]
     rows.append(_row((BACK, "nav:home")))
     return InlineKeyboardMarkup(rows)
 
