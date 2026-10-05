@@ -10,6 +10,7 @@ from .handlers.repos import register as register_repositories
 from .handlers.files import register as register_files
 from .handlers.oauth import register as register_oauth
 from .handlers.integrations import register as register_integrations
+from .handlers.pulls import register as register_pulls
 from .handlers.replies import register as register_replies
 from .state import SessionStore
 from .storage import GitHubStore
@@ -56,6 +57,7 @@ class GitHubBot:
         register_files(self.app, self.repositories, self.sessions)
         register_oauth(self.app, self.oauth, self.sessions, self.store)
         register_integrations(self.app, self.store, self.oauth, self.config.webhook_url, self.config.github_webhook_secret)
+        register_pulls(self.app, self.store, self.sessions, self.oauth)
         register_replies(self.app, self.store, self.oauth)
         self._registered = True
         return self
