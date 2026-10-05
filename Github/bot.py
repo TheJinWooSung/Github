@@ -1,3 +1,4 @@
+import asyncio
 from pyrogram import Client
 from .config import Config
 from .github.auth import GitHubAppAuth
@@ -15,21 +16,34 @@ class GitHubBot:
         self.github = GitHubClient("")
         self.repositories = RepositoryService(self.github)
         self.sessions = SessionStore(config.redis_url)
+        self.auth = GitHubAppAuth(config.github_app_id, config.github_private_key)
+        self._auth_task: asyncio.Task | None = None
         self._registered = False
 
     async def authenticate(self):
-        auth = GitHubAppAuth(self.config.github_app_id, self.config.github_private_key)
-        data = await auth.installation_token(self.config.github_installation_id)
+        data = await self.auth.installation_token(self.config.github_installation_id)
         token = data.get("token")
         if not token:
             raise RuntimeError("GitHub installation token was not returned")
         self.github.token = token
 
+    async def _refresh_auth(self):
+        while True:
+            await asyncio.sleep(45 * 60)
+            try:
+                await self.authenticate()
+            except Exception:
+                await asyncio.sleep(60)
+                try:
+                    await self.authenticate()
+                except Exception:
+                    continue
+
     def register(self):
         if self._registered:
             return self
         register_start(self.app)
-        register_repositories(self.app, self.repositories)
+        register_repositories(self.app, self.repositories, self.sessions)
         register_files(self.app, self.repositories, self.sessions)
         self._registered = True
         return self
@@ -38,8 +52,16 @@ class GitHubBot:
         await self.authenticate()
         self.register()
         await self.app.start()
+        self._auth_task = asyncio.create_task(self._refresh_auth())
 
     async def stop(self):
+        if self._auth_task:
+            self._auth_task.cancel()
+            try:
+                await self._auth_task
+            except asyncio.CancelledError:
+                pass
+            self._auth_task = None
         if self.app.is_connected:
             await self.app.stop()
         await self.sessions.close()
