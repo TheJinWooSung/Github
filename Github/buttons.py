@@ -60,6 +60,7 @@ INTEGRATION_ACTIVE = "Webhook active"
 INTEGRATION_ON = "On"
 INTEGRATION_OFF = "Off"
 INTEGRATION_DELIVERIES = "Deliveries"
+DELIVERY_LIST = "Webhook deliveries"
 DELIVERY_RETRY = "Retry"
 DELIVERY_BACK = "Webhook events"
 WEBHOOK_EVENTS = ("push", "pull_request", "issues", "issue_comment", "pull_request_review", "release", "workflow_run", "workflow_job", "deployment", "deployment_status", "star", "fork", "create", "delete")
