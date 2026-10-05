@@ -22,9 +22,10 @@ def register(app, service):
             await query.message.edit_text(f"<b>{BRANCHES}</b>", reply_markup=back())
             return
         if data.count(":") == 1:
-            full_name = data.split(":", 1)[1]
-            owner, name = full_name.split("/", 1)
-            repo = await service.get(owner, name)
+            repository_id = int(data.split(":", 1)[1])
+            repo = await service.get_by_id(repository_id)
+            owner = repo["owner"]["login"]
+            name = repo["name"]
             branch = repo.get("default_branch", "main")
-            await query.message.edit_text(repo_home(owner, name, branch, repo.get("description")), reply_markup=repository(int(repo.get("id", 0))))
+            await query.message.edit_text(repo_home(owner, name, branch, repo.get("description")), reply_markup=repository(repository_id))
     return handle_repositories, handle_repository
