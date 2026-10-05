@@ -14,10 +14,12 @@ class OAuthGrant:
     scope: str
 
 class GitHubOAuth:
-    def __init__(self, client_id: str, client_secret: str, redirect_uri: str):
+    def __init__(self, client_id: str, client_secret: str, redirect_uri: str, timeout: float = 30, api_version: str = "2026-03-10"):
         self.client_id = client_id
         self.client_secret = client_secret
         self.redirect_uri = redirect_uri
+        self.timeout = timeout
+        self.api_version = api_version
 
     def begin(self) -> tuple[str, str, str]:
         state = secrets.token_urlsafe(32)
@@ -28,8 +30,8 @@ class GitHubOAuth:
 
     async def exchange(self, code: str, verifier: str) -> OAuthGrant:
         payload = {"client_id": self.client_id, "client_secret": self.client_secret, "code": code, "redirect_uri": self.redirect_uri, "code_verifier": verifier}
-        headers = {"Accept": "application/json", "X-GitHub-Api-Version": "2026-03-10"}
-        async with httpx.AsyncClient(timeout=30) as client:
+        headers = {"Accept": "application/json", "X-GitHub-Api-Version": self.api_version}
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.post("https://github.com/login/oauth/access_token", data=payload, headers=headers)
             response.raise_for_status()
             data = response.json()
@@ -38,24 +40,24 @@ class GitHubOAuth:
         return OAuthGrant(data["access_token"], data.get("refresh_token"), data.get("expires_in"), data.get("refresh_token_expires_in"), data.get("scope", ""))
 
     async def user(self, token: str) -> dict:
-        headers = {"Accept": "application/vnd.github+json", "Authorization": f"Bearer {token}", "X-GitHub-Api-Version": "2026-03-10"}
-        async with httpx.AsyncClient(timeout=30) as client:
+        headers = {"Accept": "application/vnd.github+json", "Authorization": f"Bearer {token}", "X-GitHub-Api-Version": self.api_version}
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.get("https://api.github.com/user", headers=headers)
             response.raise_for_status()
             return response.json()
 
     async def revoke(self, access_token: str) -> None:
         auth = httpx.BasicAuth(self.client_id, self.client_secret)
-        headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2026-03-10"}
-        async with httpx.AsyncClient(timeout=30) as client:
+        headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": self.api_version}
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.request("DELETE", f"https://api.github.com/applications/{self.client_id}/grant", auth=auth, headers=headers, json={"access_token": access_token})
         if response.status_code not in {204, 404}:
             response.raise_for_status()
 
     async def refresh(self, refresh_token: str) -> OAuthGrant:
         payload = {"client_id": self.client_id, "client_secret": self.client_secret, "grant_type": "refresh_token", "refresh_token": refresh_token}
-        headers = {"Accept": "application/json", "X-GitHub-Api-Version": "2026-03-10"}
-        async with httpx.AsyncClient(timeout=30) as client:
+        headers = {"Accept": "application/json", "X-GitHub-Api-Version": self.api_version}
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.post("https://github.com/login/oauth/access_token", data=payload, headers=headers)
             response.raise_for_status()
             data = response.json()
