@@ -45,6 +45,7 @@ class CommitStageSession:
     name: str
     branch: str
     changes: list[StagedChange]
+    status: str = "ready"
     expires_at: float = 0.0
 
 @dataclass
