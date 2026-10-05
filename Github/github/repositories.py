@@ -144,7 +144,7 @@ class RepositoryService:
             payload["active"] = active
         return await self.client.request("PATCH", f"/repos/{owner}/{name}/hooks/{hook_id}", json=payload)
 
-    async def redeliver_webhook(self, owner: str, name: str, hook_id: int, delivery_id: str):
+    async def webhook_deliveries(self, owner: str, name: str, hook_id: int, page: int = 1, per_page: int = 30, status: str | None = None) -> list[dict[str, Any]]:\n        params: dict[str, Any] = {"page": page, "per_page": min(per_page, 100)}\n        if status in {"success", "failure"}:\n            params["status"] = status\n        return await self.client.request("GET", f"/repos/{owner}/{name}/hooks/{hook_id}/deliveries", params=params)\n\n    async def webhook_delivery(self, owner: str, name: str, hook_id: int, delivery_id: str) -> dict[str, Any]:\n        return await self.client.request("GET", f"/repos/{owner}/{name}/hooks/{hook_id}/deliveries/{delivery_id}")\n\n    async def redeliver_webhook(self, owner: str, name: str, hook_id: int, delivery_id: str):
         return await self.client.request("POST", f"/repos/{owner}/{name}/hooks/{hook_id}/deliveries/{delivery_id}/attempts")
 
     async def delete_webhook(self, owner: str, name: str, hook_id: int):
