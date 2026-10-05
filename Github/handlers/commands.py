@@ -31,6 +31,15 @@ def register(app, store: GitHubStore, oauth):
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
 
+    @app.on_message(filters.command("disconnect"))
+    async def disconnect(client, message):
+        user = await store.get_user(message.from_user.id)
+        if not user or not user.get("access_token"):
+            await message.reply_text(AUTH_REQUIRED)
+            return
+        await store.disconnect_user(message.from_user.id)
+        await message.reply_text("<b>GitHub disconnected.</b>")
+
     @app.on_message(filters.command("repo"))
     async def repo(client, message):
         service = await service_for(message.from_user.id)
