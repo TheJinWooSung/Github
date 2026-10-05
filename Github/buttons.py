@@ -39,6 +39,12 @@ SESSION_EXPIRED = "Edit session expired"
 COMMIT_SESSION_EXPIRED = "Commit session expired"
 COMMIT_CANCELLED = "Commit cancelled"
 COMMIT_CREATED = "Commit created"
+STAGED = "Staged changes"
+STAGE_FILE = "Stage file"
+COMMIT_STAGED = "Commit staged"
+CLEAR_STAGED = "Clear staged"
+STAGED_EMPTY = "No staged changes."
+STAGED_COUNT = "files staged"
 UNCHANGED_FILE = "No changes were made to the file."
 INVALID_COMMIT_MESSAGE = "Commit message is required."
 NOT_CONNECTED = "Connect GitHub first with /connect."
@@ -400,3 +406,17 @@ def artifact_text(item: dict):
 
 def action_logs_text(name: str, content: str):
     return f"<b>{escape(name)}</b>\n\n<pre>{escape(content[-3500:])}</pre>"
+
+
+def stage_actions(token: str):
+    return InlineKeyboardMarkup([_row((COMMIT_STAGED, f"stage:{token}:commit"), (CLEAR_STAGED, f"stage:{token}:clear"))])
+
+def staged_text(repository: str, branch: str, changes):
+    lines = [f"<b>{escape(repository)}</b> · <code>{escape(branch)}</code>", "", f"<b>{STAGED}</b>"]
+    if not changes:
+        return "\n".join(lines + [STAGED_EMPTY])
+    for change in changes[:50]:
+        marker = {"added": "+", "modified": "~", "deleted": "-"}.get(change.status, "~")
+        lines.append(f"<code>{marker}</code> {escape(change.path)}")
+    lines.extend(["", f"<b>{len(changes)}</b> {STAGED_COUNT}", "", f"<b>{COMMIT_STAGED}</b>"])
+    return "\n".join(lines)
