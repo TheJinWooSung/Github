@@ -1,5 +1,5 @@
 from pyrogram import filters
-from ..buttons import NOT_CONNECTED, INTEGRATION_USAGE, INTEGRATION_ADDED, INTEGRATION_EXISTS, INTEGRATION_REMOVED, INTEGRATION_NOT_FOUND, INTEGRATIONS_EMPTY, INTEGRATION_LIST, INTEGRATION_EVENTS, WEBHOOK_EVENTS, error_message, integrations, integration_events, integration_events_text
+from ..buttons import NOT_CONNECTED, INTEGRATION_USAGE, INTEGRATION_ADDED, INTEGRATION_EXISTS, INTEGRATION_REMOVED, INTEGRATION_NOT_FOUND, INTEGRATIONS_EMPTY, INTEGRATION_LIST, INTEGRATION_EVENTS, WEBHOOK_EVENTS, error_message, integrations, integration_events, integration_events_text, integration_deliveries, integration_delivery_text, integration_delivery_actions
 from ..github.client import GitHubClient
 from ..github.repositories import RepositoryService
 from ..storage import GitHubStore
@@ -115,6 +115,50 @@ def register(app, store: GitHubStore, oauth, webhook_url: str, webhook_secret: s
             await store.update_integration(query.from_user.id, repository_id, active=updated.get("active", active), events=updated.get("events", item.get("events") or list(WEBHOOK_EVENTS)))
             events = updated.get("events", item.get("events") or list(WEBHOOK_EVENTS))
             await query.message.edit_text(integration_events_text(item["full_name"], events, updated.get("active", active)), reply_markup=integration_events(repository_id, events, updated.get("active", active)))
+        except Exception as exc:
+            await query.message.edit_text(error_message(str(exc)))
+
+    @app.on_callback_query(filters.regex(r"^integration:\d+:deliveries$"))
+    async def integration_deliveries_view(client, query):
+        await query.answer()
+        repository_id = int(query.data.split(":")[1])
+        item = await store.integration(query.from_user.id, repository_id)
+        if not item:
+            await query.message.edit_text(INTEGRATIONS_EMPTY)
+            return
+        deliveries = await store.list_deliveries(query.from_user.id, repository_id)
+        await query.message.edit_text(INTEGRATION_EVENTS + " · Deliveries", reply_markup=integration_deliveries(deliveries, repository_id))
+
+    @app.on_callback_query(filters.regex(r"^delivery:\d+:[^:]+$"))
+    async def delivery_view(client, query):
+        await query.answer()
+        parts = query.data.split(":")
+        repository_id, delivery_id = int(parts[1]), parts[2]
+        item = await store.delivery(query.from_user.id, delivery_id)
+        if not item or int(item.get("repository_id", 0)) != repository_id:
+            await query.message.edit_text(INTEGRATIONS_EMPTY)
+            return
+        await query.message.edit_text(integration_delivery_text(item), reply_markup=integration_delivery_actions(repository_id, delivery_id, item.get("status") == "failed"))
+
+    @app.on_callback_query(filters.regex(r"^delivery:\d+:[^:]+:retry$"))
+    async def delivery_retry(client, query):
+        await query.answer()
+        parts = query.data.split(":")
+        repository_id, delivery_id = int(parts[1]), parts[2]
+        item = await store.delivery(query.from_user.id, delivery_id)
+        integration = await store.integration(query.from_user.id, repository_id)
+        if not item or not integration or not integration.get("hook_id"):
+            await query.message.edit_text(INTEGRATIONS_EMPTY)
+            return
+        try:
+            token = await store.token(query.from_user.id, oauth)
+            if not token:
+                await query.message.edit_text(NOT_CONNECTED)
+                return
+            await RepositoryService(GitHubClient(token)).redeliver_webhook(integration["owner"], integration["name"], integration["hook_id"], delivery_id)
+            await store.update_delivery_status(query.from_user.id, delivery_id, "retrying")
+            item["status"] = "retrying"
+            await query.message.edit_text(integration_delivery_text(item), reply_markup=integration_delivery_actions(repository_id, delivery_id, False))
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)))
 
