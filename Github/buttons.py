@@ -50,6 +50,31 @@ INTEGRATION_NOT_FOUND = "Repository integration was not found."
 INTEGRATIONS_EMPTY = "No repository integrations are configured."
 INTEGRATION_LIST = "Repository integrations"
 
+PR_LIST = "Pull requests"
+PR_FILES = "Files"
+PR_COMMITS = "Commits"
+PR_REVIEWS = "Reviews"
+PR_APPROVE = "Approve"
+PR_REQUEST_CHANGES = "Request changes"
+PR_COMMENT = "Comment"
+PR_MERGE = "Merge"
+PR_CLOSE = "Close"
+PR_REOPEN = "Reopen"
+PR_READY = "Ready for review"
+PR_DRAFT = "Convert to draft"
+PR_BACK = "Repository"
+REVIEW_PROMPT = "Send the review text as your next message."
+REVIEW_REQUIRED = "A review message is required."
+MERGE_CONFIRM = "Confirm merge"
+MERGE_METHOD = "Merge method"
+PR_UPDATED = "Pull request updated."
+PR_MERGED = "Pull request merged."
+PR_CLOSED = "Pull request closed."
+PR_REOPENED = "Pull request reopened."
+PR_REVIEWED = "Review submitted."
+PR_EMPTY = "No pull requests found."
+PR_ERROR = "Pull request action failed."
+
 @dataclass(frozen=True)
 class CommitView:
     repository: str
@@ -163,3 +188,83 @@ def commit_result(sha: str, path: str, message: str):
 def file_text(owner: str, name: str, path: str, content: str, branch: str):
     body = content[:3500]
     return f"<b>{escape(owner)}/{escape(name)}</b>\n\n<code>{escape(path)}</code>\n<code>{escape(branch)}</code>\n\n<pre>{escape(body)}</pre>"
+
+
+def pull_requests(items, repository_id: int, state: str = "open"):
+    rows = []
+    for item in items[:20]:
+        number = item.get("number")
+        title = escape(item.get("title", "Pull request"))[:48]
+        rows.append(_row((f"#{number} {title}", f"pr:{repository_id}:{number}")))
+    rows.append(_row((BACK, f"repo:{repository_id}")))
+    return InlineKeyboardMarkup(rows)
+
+def pull_request_view(repository_id: int, number: int, state: str, draft: bool = False):
+    rows = [
+        _row((PR_FILES, f"pr:{repository_id}:{number}:files"), (PR_COMMITS, f"pr:{repository_id}:{number}:commits")),
+        _row((PR_REVIEWS, f"pr:{repository_id}:{number}:reviews"), (PR_COMMENT, f"pr:{repository_id}:{number}:comment")),
+    ]
+    if state == "open":
+        if draft:
+            rows.append(_row((PR_READY, f"pr:{repository_id}:{number}:ready")))
+        else:
+            rows.append(_row((PR_APPROVE, f"pr:{repository_id}:{number}:approve"), (PR_REQUEST_CHANGES, f"pr:{repository_id}:{number}:changes")))
+        rows.append(_row((PR_MERGE, f"pr:{repository_id}:{number}:merge"), (PR_CLOSE, f"pr:{repository_id}:{number}:close")))
+    else:
+        rows.append(_row((PR_REOPEN, f"pr:{repository_id}:{number}:reopen")))
+    rows.append(_row((PR_BACK, f"repo:{repository_id}:pulls")))
+    return InlineKeyboardMarkup(rows)
+
+def pull_request_text(item: dict):
+    title = escape(item.get("title", "Pull request"))
+    number = item.get("number", "?")
+    state = escape(item.get("state", "unknown"))
+    draft = " · draft" if item.get("draft") else ""
+    user = escape(item.get("user", {}).get("login", "unknown"))
+    base = escape(item.get("base", {}).get("ref", "?"))
+    head = escape(item.get("head", {}).get("ref", "?"))
+    body = escape(item.get("body") or "")
+    lines = [f"<b>#{number} {title}</b>", f"<code>{state}{draft}</code>", "", f"{head} → {base}", f"by <code>{user}</code>"]
+    if body:
+        lines.extend(["", body[:2500]])
+    stats = []
+    if item.get("changed_files") is not None:
+        stats.append(f"files {item['changed_files']}")
+    if item.get("additions") is not None:
+        stats.append(f"+{item['additions']}")
+    if item.get("deletions") is not None:
+        stats.append(f"-{item['deletions']}")
+    if stats:
+        lines.extend(["", " · ".join(stats)])
+    return "\n".join(lines)
+
+def pull_request_files_text(items):
+    if not items:
+        return f"<b>{PR_FILES}</b>\n\n{EMPTY}"
+    lines = [f"<b>{PR_FILES}</b>"]
+    for item in items[:30]:
+        lines.append(f"\n<code>{escape(item.get('filename', 'file'))}</code> · +{item.get('additions', 0)} -{item.get('deletions', 0)}")
+    return "".join(lines)
+
+def pull_request_commits_text(items):
+    if not items:
+        return f"<b>{PR_COMMITS}</b>\n\n{EMPTY}"
+    lines = [f"<b>{PR_COMMITS}</b>"]
+    for item in items[:30]:
+        sha = escape(item.get("sha", "")[:10])
+        message = escape((item.get("commit", {}).get("message") or "commit").split("\n", 1)[0])
+        lines.append(f"\n<code>{sha}</code> {message[:100]}")
+    return "".join(lines)
+
+def pull_request_reviews_text(items):
+    if not items:
+        return f"<b>{PR_REVIEWS}</b>\n\n{EMPTY}"
+    lines = [f"<b>{PR_REVIEWS}</b>"]
+    for item in items[-30:]:
+        user = escape(item.get("user", {}).get("login", "unknown"))
+        state = escape(item.get("state", "PENDING"))
+        body = escape(item.get("body") or "")
+        lines.append(f"\n<b>{user}</b> · <code>{state}</code>")
+        if body:
+            lines.append(f"\n{body[:500]}")
+    return "".join(lines)
