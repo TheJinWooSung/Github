@@ -59,7 +59,8 @@ def register(app, store: GitHubStore, sessions: SessionStore, oauth):
                 body = pull_request_commits_text(await service.pull_request_commits(owner, name, int(number)))
             else:
                 body = pull_request_reviews_text(await service.pull_request_reviews(owner, name, int(number)))
-            await query.message.edit_text(body, reply_markup=pull_request_view(int(repository_id), int(number), "open"))
+            item = await service.pull_request(owner, name, int(number))
+            await query.message.edit_text(body, reply_markup=pull_request_view(int(repository_id), int(number), item.get("state", "open"), item.get("draft", False)))
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)))
 
@@ -99,14 +100,12 @@ def register(app, store: GitHubStore, sessions: SessionStore, oauth):
             number = int(number)
             if action == "merge":
                 item = await service.pull_request(owner, name, number)
-                if item.get("state") != "open":
+                if item.get("state") != "open" or item.get("merged"):
                     await query.message.edit_text(PR_ERROR)
                     return
-                result = await service.merge_pull_request(owner, name, number, "squash", item.get("head", {}).get("sha"))
-                if not result.get("merged"):
-                    await query.message.edit_text(f"{PR_ERROR}\n\n{result.get('message', 'GitHub did not merge the pull request.')}")
-                    return
-                await query.message.edit_text(PR_MERGED, reply_markup=pull_request_view(int(repository_id), number, "closed"))
+                await query.message.edit_text(
+                    f"<b>{MERGE_CONFIRM}</b>\n\n<code>#{number}</code>\nmethod <code>squash</code>\n\nUse /merge confirm as a reply to the GitHub notification to complete the merge."
+                )
             elif action == "close":
                 await service.update_pull_request(owner, name, number, state="closed")
                 await query.message.edit_text(PR_CLOSED, reply_markup=pull_request_view(int(repository_id), number, "closed"))
@@ -114,8 +113,9 @@ def register(app, store: GitHubStore, sessions: SessionStore, oauth):
                 await service.update_pull_request(owner, name, number, state="open")
                 await query.message.edit_text(PR_REOPENED, reply_markup=pull_request_view(int(repository_id), number, "open"))
             else:
-                await service.update_pull_request(owner, name, number, state="open")
-                await query.message.edit_text(PR_REVIEWED, reply_markup=pull_request_view(int(repository_id), number, "open"))
+                await service.update_pull_request(owner, name, number, draft=False)
+                item = await service.pull_request(owner, name, number)
+                await query.message.edit_text(PR_REVIEWED, reply_markup=pull_request_view(int(repository_id), number, item.get("state", "open"), item.get("draft", False)))
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)))
 
