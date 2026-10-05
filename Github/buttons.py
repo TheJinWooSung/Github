@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from html import escape
-from kurigram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 START = "GitHub control center"
 START_HINT = "Manage repositories, branches, files, commits, pull requests and Actions from Telegram."
