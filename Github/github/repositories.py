@@ -226,6 +226,64 @@ class RepositoryService:
     async def run_artifacts(self, owner: str, name: str, run_id: int, page: int = 1, per_page: int = 30) -> dict[str, Any]:
         return await self.client.request("GET", f"/repos/{owner}/{name}/actions/runs/{run_id}/artifacts", params={"page": page, "per_page": min(per_page, 100)})
 
+    async def update_repository(self, owner: str, name: str, **fields: Any) -> dict[str, Any]:
+        allowed = {"name", "description", "homepage", "private", "has_issues", "has_projects", "has_wiki", "is_template", "default_branch", "allow_squash_merge", "allow_merge_commit", "allow_rebase_merge", "delete_branch_on_merge", "allow_auto_merge", "archived"}
+        payload = {key: value for key, value in fields.items() if key in allowed and value is not None}
+        return await self.client.request("PATCH", f"/repos/{owner}/{name}", json=payload)
+
+    async def fork(self, owner: str, name: str, organization: str | None = None, repository: str | None = None) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        if organization:
+            payload["organization"] = organization
+        if repository:
+            payload["name"] = repository
+        return await self.client.request("POST", f"/repos/{owner}/{name}/forks", json=payload)
+
+    async def languages(self, owner: str, name: str) -> dict[str, int]:
+        return await self.client.request("GET", f"/repos/{owner}/{name}/languages")
+
+    async def create_issue(self, owner: str, name: str, title: str, body: str = "", **fields: Any) -> dict[str, Any]:
+        payload: dict[str, Any] = {"title": title}
+        if body:
+            payload["body"] = body
+        for key in ("assignees", "milestone", "labels"):
+            if fields.get(key) is not None:
+                payload[key] = fields[key]
+        return await self.client.request("POST", f"/repos/{owner}/{name}/issues", json=payload)
+
+    async def update_issue(self, owner: str, name: str, number: int, **fields: Any) -> dict[str, Any]:
+        allowed = {"title", "body", "state", "state_reason", "milestone", "labels", "assignees", "locked"}
+        payload = {key: value for key, value in fields.items() if key in allowed and value is not None}
+        return await self.client.request("PATCH", f"/repos/{owner}/{name}/issues/{number}", json=payload)
+
+    async def issue(self, owner: str, name: str, number: int) -> dict[str, Any]:
+        return await self.client.request("GET", f"/repos/{owner}/{name}/issues/{number}")
+
+    async def add_assignees(self, owner: str, name: str, number: int, assignees: list[str]) -> dict[str, Any]:
+        return await self.client.request("POST", f"/repos/{owner}/{name}/issues/{number}/assignees", json={"assignees": assignees})
+
+    async def remove_assignees(self, owner: str, name: str, number: int, assignees: list[str]) -> dict[str, Any]:
+        return await self.client.request("DELETE", f"/repos/{owner}/{name}/issues/{number}/assignees", json={"assignees": assignees})
+
+    async def issue_labels(self, owner: str, name: str, number: int) -> list[dict[str, Any]]:
+        return await self.client.request("GET", f"/repos/{owner}/{name}/issues/{number}/labels")
+
+    async def set_issue_labels(self, owner: str, name: str, number: int, labels: list[str]) -> list[dict[str, Any]]:
+        return await self.client.request("PUT", f"/repos/{owner}/{name}/issues/{number}/labels", json={"labels": labels})
+
+    async def remove_issue_label(self, owner: str, name: str, number: int, label: str) -> Any:
+        return await self.client.request("DELETE", f"/repos/{owner}/{name}/issues/{number}/labels/{label}")
+
+    async def lock_issue(self, owner: str, name: str, number: int, lock_reason: str | None = None) -> Any:
+        payload = {"lock_reason": lock_reason} if lock_reason else {}
+        return await self.client.request("PUT", f"/repos/{owner}/{name}/issues/{number}/lock", json=payload)
+
+    async def unlock_issue(self, owner: str, name: str, number: int) -> Any:
+        return await self.client.request("DELETE", f"/repos/{owner}/{name}/issues/{number}/lock")
+
+    async def search_issues(self, query: str, page: int = 1, per_page: int = 20) -> dict[str, Any]:
+        return await self.client.request("GET", "/search/issues", params={"q": query, "page": page, "per_page": min(per_page, 100)})
+
     async def permissions(self, owner: str, name: str) -> dict[str, Any]:
         return await self.client.request("GET", f"/repos/{owner}/{name}")
 
