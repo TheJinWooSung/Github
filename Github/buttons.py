@@ -268,3 +268,7 @@ def pull_request_reviews_text(items):
         if body:
             lines.append(f"\n{body[:500]}")
     return "".join(lines)
+
+
+def pull_request_list_text(repository: str):
+    return f"<b>{escape(repository)}</b>\n\n{PR_LIST}"
