@@ -13,7 +13,7 @@ A Telegram GitHub control center built around GitHub App authentication, user OA
 
 ## OAuth
 
-/ connect opens the GitHub authorization flow with PKCE. The callback is served at:
+/connect opens the GitHub authorization flow with PKCE. The callback is served at:
 
 `WEBHOOK_URL/oauth/callback`
 
