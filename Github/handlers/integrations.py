@@ -1,5 +1,5 @@
 from pyrogram import filters
-from ..buttons import NOT_CONNECTED, INTEGRATION_USAGE, INTEGRATION_ADDED, INTEGRATION_EXISTS, INTEGRATION_REMOVED, INTEGRATION_NOT_FOUND, INTEGRATIONS_EMPTY, INTEGRATION_LIST, INTEGRATION_EVENTS, WEBHOOK_EVENTS, error_message, integrations, integration_events, integration_events_text, integration_deliveries, integration_delivery_text, integration_delivery_actions
+from ..buttons import NOT_CONNECTED, INTEGRATION_USAGE, INTEGRATION_ADDED, INTEGRATION_EXISTS, INTEGRATION_REMOVED, INTEGRATION_NOT_FOUND, INTEGRATIONS_EMPTY, INTEGRATION_LIST, INTEGRATION_EVENTS, WEBHOOK_EVENTS, error_message, integrations, integration_events, integration_events_text, integration_deliveries, integration_delivery_text, integration_delivery_actions, DELIVERY_LIST
 from ..github.client import GitHubClient
 from ..github.repositories import RepositoryService
 from ..storage import GitHubStore
@@ -127,7 +127,7 @@ def register(app, store: GitHubStore, oauth, webhook_url: str, webhook_secret: s
             await query.message.edit_text(INTEGRATIONS_EMPTY)
             return
         deliveries = await store.list_deliveries(query.from_user.id, repository_id)
-        await query.message.edit_text(INTEGRATION_EVENTS + " · Deliveries", reply_markup=integration_deliveries(deliveries, repository_id))
+        await query.message.edit_text(DELIVERY_LIST, reply_markup=integration_deliveries(deliveries, repository_id))
 
     @app.on_callback_query(filters.regex(r"^delivery:\d+:[^:]+$"))
     async def delivery_view(client, query):
