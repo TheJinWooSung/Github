@@ -1,7 +1,8 @@
 import base64
 from pyrogram import filters
-from ..buttons import back, files, file_view, files_text, file_text, error_message
+from ..buttons import back, files, file_view, files_text, file_text, error_message, commit_preview, CommitView, commit_review
 from ..state import EditSession, SessionStore
+from ..github.commit import CommitEngine, CommitPlan, FileChange
 
 def decode_content(data: dict) -> str:
     value = data.get("content", "")
@@ -50,10 +51,8 @@ def register(app, service, sessions: SessionStore):
     async def handle_editor_message(client, message):
         active = None
         token = None
-        for key, value in list(sessions.memory.items()):
-            if value.user_id == message.from_user.id and value.status == "awaiting_content":
-                active, token = value, key
-                break
+        token = await sessions.active(message.from_user.id)
+        active = await sessions.get(token) if token else None
         if not active:
             return
         active.content = message.text
@@ -70,4 +69,26 @@ def register(app, service, sessions: SessionStore):
                 await sessions.set(key, value)
                 await message.reply_text(f"<b>Review changes</b>\n\n<code>{value.owner}/{value.name}</code> · <code>{value.branch}</code>\n\nFILE  <code>{value.path}</code>\n\n<b>Commit message</b>\n<code>{value.message}</code>\n\nConfirm this commit?", reply_markup=back(f"commit:{key}:confirm"))
                 return
-    return handle_file, handle_edit
+    @app.on_callback_query(filters.regex(r"^commit:"))
+    async def handle_commit(client, query):
+        await query.answer()
+        _, token, action = query.data.split(":", 2)
+        session = await sessions.get(token)
+        if not session or session.user_id != query.from_user.id or session.status != "ready":
+            await query.message.edit_text(error_message("Commit session expired"), reply_markup=back())
+            return
+        if action == "cancel":
+            await sessions.delete(token)
+            await query.message.edit_text("<b>Commit cancelled</b>", reply_markup=back(f"repo:{session.repository_id}"))
+            return
+        if action != "confirm":
+            return
+        engine = CommitEngine(service)
+        try:
+            plan = CommitPlan(f"{session.owner}/{session.name}", session.branch, session.message or "", [FileChange(session.path, "modified", session.content)])
+            result = await engine.execute(plan, session.base_head)
+            await sessions.delete(token)
+            await query.message.edit_text(f"<b>Commit created</b>\\n\\n<code>{result[\"new_sha\"][:12]}</code>\\n<code>{session.path}</code>\\n\n{session.message}", reply_markup=back(f"repo:{session.repository_id}"))
+        except Exception as exc:
+            await query.message.edit_text(error_message(str(exc)), reply_markup=back(f"repo:{session.repository_id}"))
+    return handle_file, handle_edit, handle_commit
