@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from html import escape
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 
 START = "GitHub control center"
 START_HINT = "Manage repositories, branches, files, commits, pull requests and Actions from Telegram."
@@ -191,8 +191,14 @@ def files(items, browser_token: str, parent_token: str | None = None):
     rows.append(_row((BACK, f"browse:{parent_token}:back" if parent_token else "nav:back")))
     return InlineKeyboardMarkup(rows)
 
-def file_view(repository_id: int, edit_token: str, browser_token: str):
-    return InlineKeyboardMarkup([_row(("Edit", f"edit:{edit_token}")), _row((BACK, f"browse:{browser_token}:back"))])
+def file_view(repository_id: int, edit_token: str, browser_token: str, webapp_url: str | None = None, path: str | None = None, branch: str | None = None):
+    rows = [_row(("Edit", f"edit:{edit_token}"))]
+    if webapp_url and path is not None and branch is not None:
+        from urllib.parse import urlencode
+        url = webapp_url.rstrip("/") + "/webapp/editor?" + urlencode({"repo": repository_id, "path": path, "branch": branch})
+        rows.append([InlineKeyboardButton("Web editor", web_app=WebAppInfo(url=url))])
+    rows.append(_row((BACK, f"browse:{browser_token}:back")))
+    return InlineKeyboardMarkup(rows)
 
 def files_text(owner: str, name: str, branch: str, path: str, items):
     title = f"<b>{escape(owner)}/{escape(name)}</b>  <code>{escape(branch)}</code>"
