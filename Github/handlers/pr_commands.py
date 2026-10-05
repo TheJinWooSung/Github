@@ -98,7 +98,8 @@ def register(app, store: GitHubStore, oauth):
         if not repo:
             await message.reply_text(REPLY_REQUIRED)
             return
-        method = message.command[1].lower() if len(message.command) > 1 and message.command[1].lower() != "confirm" else "merge"
+        method = next((item.lower() for item in message.command[1:] if item.lower() in {"merge", "squash", "rebase"}), "merge")
+        confirming = any(item.lower() == "confirm" for item in message.command[1:])
         if method not in {"merge", "squash", "rebase"}:
             await message.reply_text(INVALID_METHOD)
             return
@@ -107,10 +108,10 @@ def register(app, store: GitHubStore, oauth):
             if item.get("merged"):
                 await result(message, "Pull request is already merged", number)
                 return
-            if len(message.command) < 2 or message.command[1].lower() != "confirm":
+            if not confirming:
                 mergeable = item.get("mergeable")
                 state = item.get("mergeable_state", "unknown")
-                await message.reply_text(f"<b>Merge pull request</b>\n\n<code>#{number}</code>\nmethod <code>{method}</code>\nmergeable <code>{escape(str(mergeable))}</code> · <code>{escape(state)}</code>\n\n{MERGE_CONFIRMATION}")
+                await message.reply_text(f"<b>Merge pull request</b>\n\n<code>#{number}</code>\nmethod <code>{method}</code>\nmergeable <code>{escape(str(mergeable))}</code> · <code>{escape(state)}</code>\n\nReply with /merge {method} confirm to continue.")
                 return
             head_sha = item.get("head", {}).get("sha")
             merged = await service.merge_pull_request(repo["owner"]["login"], repo["name"], number, method, head_sha)
