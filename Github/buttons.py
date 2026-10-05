@@ -115,6 +115,7 @@ ACTION_ERROR = "Actions request failed."
 ACTION_CONNECT_REQUIRED = "Connect GitHub first with /connect."
 ACTION_NOT_FOUND = "The requested Actions resource was not found."
 ACTION_RUN_REQUEST = "Workflow dispatch requested."
+ACTION_NO_STEPS = "No steps found."
 
 @dataclass(frozen=True)
 class CommitView:
