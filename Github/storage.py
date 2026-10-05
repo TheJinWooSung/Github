@@ -13,6 +13,7 @@ class GitHubStore:
     async def setup(self):
         await self.users.create_index("telegram_id", unique=True)
         await self.integrations.create_index([("telegram_id", 1), ("repository_id", 1)], unique=True)
+        await self.db["github_deliveries"].create_index([("delivery_id", 1), ("telegram_id", 1)], unique=True)
 
     async def save_user(self, telegram_id: int, profile: dict, grant) -> None:
         now = datetime.now(timezone.utc)
@@ -40,10 +41,9 @@ class GitHubStore:
             return grant.access_token
         return self.cipher.decrypt(user["access_token"].encode()).decode()
 
-    async def delivery_seen(self, delivery_id: str) -> bool:
-        if await self.db["github_deliveries"].find_one({"delivery_id": delivery_id}):
-            return True
-        return False
+    async def claim_delivery(self, delivery_id: str, telegram_id: int, repository_id: int, event: str, number: int | None, message_id: int) -> bool:
+        result = await self.db["github_deliveries"].update_one({"delivery_id": delivery_id, "telegram_id": telegram_id}, {"$setOnInsert": {"delivery_id": delivery_id, "telegram_id": telegram_id, "repository_id": repository_id, "event": event, "number": number, "message_id": message_id}}, upsert=True)
+        return result.upserted_id is not None
 
     async def save_delivery(self, delivery_id: str, telegram_id: int, repository_id: int, event: str, number: int | None, message_id: int) -> None:
         await self.db["github_deliveries"].update_one({"delivery_id": delivery_id, "telegram_id": telegram_id}, {"$set": {"delivery_id": delivery_id, "telegram_id": telegram_id, "repository_id": repository_id, "event": event, "number": number, "message_id": message_id}}, upsert=True)
