@@ -45,14 +45,27 @@ def register(app, store: GitHubStore, oauth, webhook_url: str, webhook_secret: s
             items = await store.list_integrations(message.from_user.id)
             await message.reply_text(INTEGRATIONS_EMPTY if not items else INTEGRATION_LIST, reply_markup=integrations(items))
             return
-        removed = await store.delete_integration(message.from_user.id, int(message.command[1]))
+        repository_id = int(message.command[1])
+        item = await store.integration(message.from_user.id, repository_id)
+        removed = False
+        if item:
+            token = await store.token(message.from_user.id, oauth)
+            if token and item.get("hook_id"):
+                await RepositoryService(GitHubClient(token)).delete_webhook(item["owner"], item["name"], item["hook_id"])
+            removed = await store.delete_integration(message.from_user.id, repository_id)
         await message.reply_text(INTEGRATION_REMOVED if removed else INTEGRATION_NOT_FOUND)
 
     @app.on_callback_query(filters.regex(r"^integration:\d+:delete$"))
     async def delete_callback(client, query):
         await query.answer()
         repository_id = int(query.data.split(":")[1])
-        removed = await store.delete_integration(query.from_user.id, repository_id)
+        item = await store.integration(query.from_user.id, repository_id)
+        removed = False
+        if item:
+            token = await store.token(query.from_user.id, oauth)
+            if token and item.get("hook_id"):
+                await RepositoryService(GitHubClient(token)).delete_webhook(item["owner"], item["name"], item["hook_id"])
+            removed = await store.delete_integration(query.from_user.id, repository_id)
         items = await store.list_integrations(query.from_user.id)
         await query.message.edit_text(INTEGRATIONS_EMPTY if not items else INTEGRATION_LIST, reply_markup=integrations(items) if items else None)
 
