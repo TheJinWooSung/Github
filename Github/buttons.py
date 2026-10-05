@@ -420,3 +420,40 @@ def staged_text(repository: str, branch: str, changes):
         lines.append(f"<code>{marker}</code> {escape(change.path)}")
     lines.extend(["", f"<b>{len(changes)}</b> {STAGED_COUNT}", "", f"<b>{COMMIT_STAGED}</b>"])
     return "\n".join(lines)
+
+
+DIFF_TITLE = "Changes"
+DIFF_EMPTY = "No diff available."
+DIFF_BINARY = "Binary file"
+DIFF_NO_PATCH = "No textual patch available."
+DIFF_PREVIOUS = "Previous"
+DIFF_NEXT = "Next"
+DIFF_BACK = "Back to PR"
+DIFF_COMMENT = "Comment on file"
+DIFF_TRUNCATED = "Diff truncated for Telegram."
+
+def pull_request_diff_text(item: dict, index: int, total: int):
+    filename = escape(item.get("filename", "file"))
+    status = escape(item.get("status", "modified"))
+    additions = item.get("additions", 0)
+    deletions = item.get("deletions", 0)
+    patch = item.get("patch")
+    header = f"<b>{DIFF_TITLE} · {index + 1}/{total}</b>\n\n<code>{filename}</code>\n{status} · +{additions} -{deletions}"
+    if item.get("previous_filename"):
+        header += f"\nfrom <code>{escape(item['previous_filename'])}</code>"
+    if item.get("binary"):
+        return header + f"\n\n{DIFF_BINARY}"
+    if not patch:
+        return header + f"\n\n{DIFF_NO_PATCH}"
+    body = escape(patch[-3000:])
+    return header + f"\n\n<pre>{body}</pre>"
+
+def pull_request_diff_actions(repository_id: int, number: int, index: int, total: int):
+    row = []
+    if index > 0:
+        row.append(InlineKeyboardButton(DIFF_PREVIOUS, callback_data=f"diff:{repository_id}:{number}:{index - 1}"))
+    if index + 1 < total:
+        row.append(InlineKeyboardButton(DIFF_NEXT, callback_data=f"diff:{repository_id}:{number}:{index + 1}"))
+    rows = [row] if row else []
+    rows.append(_row((DIFF_BACK, f"pr:{repository_id}:{number}")))
+    return InlineKeyboardMarkup(rows)
