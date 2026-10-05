@@ -94,6 +94,9 @@ ACTION_RERUNNED = "Workflow rerun requested."
 ACTION_CANCELLED = "Workflow run cancelled."
 ACTION_LOGS = "Logs"
 ACTION_ERROR = "Actions request failed."
+ACTION_CONNECT_REQUIRED = "Connect GitHub first with /connect."
+ACTION_NOT_FOUND = "The requested Actions resource was not found."
+ACTION_RUN_REQUEST = "Workflow dispatch requested."
 
 @dataclass(frozen=True)
 class CommitView:
@@ -363,6 +366,18 @@ def actions_text(repository: str):
 
 def workflow_text(item: dict):
     return f"<b>{escape(item.get('name', 'Workflow'))}</b>\n\n<code>{escape(item.get('state', 'unknown'))}</code>\n<code>{escape(item.get('path', ''))}</code>"
+
+def workflow_actions(repository_id: int, workflow_id: int, runs, include_run: bool = True):
+    rows = []
+    if include_run:
+        rows.append(_row((ACTION_RUN, f"workflow:{repository_id}:{workflow_id}:run")))
+    for item in runs[:20]:
+        run_id = item.get("id")
+        name = escape(item.get("name", "workflow"))[:34]
+        status = escape(item.get("conclusion") or item.get("status", "unknown"))
+        rows.append(_row((f"{name} · {status}", f"run:{repository_id}:{run_id}")))
+    rows.append(_row((ACTION_BACK, f"repo:{repository_id}:actions")))
+    return InlineKeyboardMarkup(rows)
 
 def run_text(item: dict):
     name = escape(item.get('name', 'Workflow run'))
