@@ -146,7 +146,6 @@ def register(app, service, sessions: SessionStore):
         if action != "commit" or not stage.changes:
             await query.message.edit_text(staged_text(f"{stage.owner}/{stage.name}", stage.branch, stage.changes), reply_markup=stage_actions(token))
             return
-        message_text = None
         try:
             await query.message.edit_text(staged_text(f"{stage.owner}/{stage.name}", stage.branch, stage.changes))
             await query.message.reply_text("Send the commit message.")
