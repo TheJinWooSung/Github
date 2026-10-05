@@ -29,6 +29,25 @@ class EditSession:
     expires_at: float = 0.0
 
 @dataclass
+class StagedChange:
+    path: str
+    status: str
+    content: str | None = None
+    additions: int = 0
+    deletions: int = 0
+
+@dataclass
+class CommitStageSession:
+    user_id: int
+    chat_id: int
+    repository_id: int
+    owner: str
+    name: str
+    branch: str
+    changes: list[StagedChange]
+    expires_at: float = 0.0
+
+@dataclass
 class ReviewSession:
     user_id: int
     chat_id: int
@@ -71,6 +90,8 @@ class SessionStore:
                 await self.redis.setex(f"github:active:{session.user_id}", self.ttl, token)
             if isinstance(session, ReviewSession):
                 await self.redis.setex(f"github:review:{session.user_id}", self.ttl, token)
+            if isinstance(session, CommitStageSession):
+                await self.redis.setex(f"github:stage:{session.user_id}", self.ttl, token)
             return
         async with self.lock:
             self.memory[token] = session
@@ -85,6 +106,9 @@ class SessionStore:
                 return OAuthState(**payload)
             if "event" in payload and "number" in payload and "owner" in payload:
                 return ReviewSession(**payload)
+            if "changes" in payload and "branch" in payload:
+                payload["changes"] = [StagedChange(**item) for item in payload["changes"]]
+                return CommitStageSession(**payload)
             if "parent_token" in payload:
                 return BrowserSession(**payload)
             return EditSession(**payload)
@@ -116,13 +140,38 @@ class SessionStore:
         session = await self.get(token)
         if self.redis:
             await self.redis.delete(self._key(token))
-            if isinstance(session, (EditSession, ReviewSession)):
-                key = f"github:active:{session.user_id}" if isinstance(session, EditSession) else f"github:review:{session.user_id}"
+            if isinstance(session, (EditSession, ReviewSession, CommitStageSession)):
+                if isinstance(session, EditSession):
+                    key = f"github:active:{session.user_id}"
+                elif isinstance(session, ReviewSession):
+                    key = f"github:review:{session.user_id}"
+                else:
+                    key = f"github:stage:{session.user_id}"
                 if await self.redis.get(key) == token:
                     await self.redis.delete(key)
             return
         async with self.lock:
             self.memory.pop(token, None)
+
+    async def stage(self, user_id: int) -> str | None:
+        if self.redis:
+            token = await self.redis.get(f"github:stage:{user_id}")
+            if token and await self.get(token):
+                return token
+            if token:
+                await self.redis.delete(f"github:stage:{user_id}")
+            return None
+        async with self.lock:
+            for token, session in self.memory.items():
+                if isinstance(session, CommitStageSession) and session.user_id == user_id and session.expires_at > time.time():
+                    return token
+            return None
+
+    async def create_stage(self, session: CommitStageSession):
+        token = secrets.token_urlsafe(18)
+        session.expires_at = time.time() + self.ttl
+        await self.set(token, session)
+        return token
 
     async def review(self, user_id: int) -> str | None:
         if self.redis:
