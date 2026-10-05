@@ -164,6 +164,8 @@ class GitHubStore:
                 "name": repo["name"],
                 "private": repo.get("private", False),
                 "hook_id": hook_id,
+                "events": repo.get("webhook_events", []),
+                "active": repo.get("webhook_active", True),
                 "updated_at": now,
             }, "$setOnInsert": {"telegram_id": telegram_id, "created_at": now}},
             upsert=True,
@@ -171,6 +173,15 @@ class GitHubStore:
 
     async def list_integrations(self, telegram_id: int):
         return await self.integrations.find({"telegram_id": telegram_id}).sort("full_name", 1).to_list(length=100)
+
+    async def update_integration(self, telegram_id: int, repository_id: int, **fields) -> bool:
+        allowed = {"events", "active", "hook_id"}
+        payload = {key: value for key, value in fields.items() if key in allowed}
+        if not payload:
+            return False
+        payload["updated_at"] = datetime.now(timezone.utc)
+        result = await self.integrations.update_one({"telegram_id": telegram_id, "repository_id": repository_id}, {"$set": payload})
+        return result.modified_count == 1
 
     async def delete_integration(self, telegram_id: int, repository_id: int) -> bool:
         result = await self.integrations.delete_one({"telegram_id": telegram_id, "repository_id": repository_id})
