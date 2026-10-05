@@ -15,6 +15,7 @@ from .handlers.pr_commands import register as register_pr_commands
 from .handlers.replies import register as register_replies
 from .handlers.actions import register as register_actions
 from .handlers.action_commands import register as register_action_commands
+from .handlers.discussions import register as register_discussions
 from .handlers.commands import register as register_commands
 from .state import SessionStore
 from .storage import GitHubStore
@@ -66,6 +67,7 @@ class GitHubBot:
         register_replies(self.app, self.store, self.oauth)
         register_actions(self.app, self.store, self.oauth)
         register_action_commands(self.app, self.store, self.oauth)
+        register_discussions(self.app, self.store, self.oauth)
         register_commands(self.app, self.store, self.oauth)
         self._registered = True
         return self
