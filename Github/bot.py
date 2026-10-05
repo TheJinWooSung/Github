@@ -9,6 +9,7 @@ from .handlers.start import register as register_start
 from .handlers.repos import register as register_repositories
 from .handlers.files import register as register_files
 from .handlers.oauth import register as register_oauth
+from .handlers.integrations import register as register_integrations
 from .state import SessionStore
 from .storage import GitHubStore
 from .web import build_web
@@ -53,6 +54,7 @@ class GitHubBot:
         register_repositories(self.app, self.repositories, self.sessions)
         register_files(self.app, self.repositories, self.sessions)
         register_oauth(self.app, self.oauth, self.sessions, self.store)
+        register_integrations(self.app, self.store)
         self._registered = True
         return self
 
