@@ -22,7 +22,9 @@ def register(app, store: GitHubStore, oauth, webhook_url: str, webhook_secret: s
             if any(item["repository_id"] == repo["id"] for item in existing):
                 await message.reply_text(INTEGRATION_EXISTS)
                 return
-            hook = await service.create_webhook(owner, name, f"{webhook_url}/webhooks/github", webhook_secret, ["push", "pull_request", "issues", "release", "workflow_run", "star"])
+            settings = await store.get_settings(message.from_user.id)
+            events = settings.get("events") or ["push", "pull_request", "issues", "release", "workflow_run", "star"]
+            hook = await service.create_webhook(owner, name, f"{webhook_url}/webhooks/github", webhook_secret, events)
             await store.add_integration(message.from_user.id, repo, hook.get("id"))
             await message.reply_text(INTEGRATION_ADDED)
         except Exception as exc:
