@@ -1,1 +1,404 @@
-<div align="center">\n\n# GitHub for Telegram\n\n**A GitHub control center built for Telegram.**\n\nManage repositories, branches, files, commits, pull requests, reviews and repository notifications without leaving Telegram.\n\n<p>\n  <img src="https://i.ibb.co/WWS60dJP/tmp-otmadsf.jpg" alt="GitHub for Telegram preview" width="850">\n</p>\n\n</div>\n\n---\n\n## Overview\n\nGitHub for Telegram brings practical GitHub repository management into a focused Telegram interface.\n\nIt combines a Telegram bot, GitHub OAuth, GitHub App authentication, FastAPI webhooks, MongoDB and Redis into one service.\n\nThe goal is simple: **browse, review and manage GitHub work from Telegram without turning the bot into a noisy dashboard.**\n\n## Features\n\n| Area | Features |\n| --- | --- |\n| Repositories | Browse, search and open repository dashboards |\n| Source | Browse branches, directories and files |\n| Files | Read and edit file contents |\n| Commits | Review changes and create commits from Telegram |\n| Pull requests | View PRs, files, commits and reviews |\n| PR reviews | Approve, request changes or leave review comments |\n| PR lifecycle | Merge, close, reopen and move drafts to review |\n| Integrations | Connect repositories for GitHub event notifications |\n| Notifications | Push, PR, issue, release, Actions and star events |\n| Replies | Reply to supported GitHub notifications from Telegram |\n| Authentication | GitHub OAuth with PKCE and encrypted token storage |\n| Web service | FastAPI health, OAuth callback and webhook receiver |\n| Sessions | Redis-backed editing and review sessions |\n\n## Commands\n\n~~~text\n/start\n/connect\n/repos\n\n/newintegration owner/repository\n/listintegrations\n/delintegration repository_id\n~~~\n\n### /connect\n\nStarts the GitHub OAuth authorization flow with PKCE.\n\n### /repos\n\nOpens the repository browser and repository-level management interface.\n\n### /newintegration\n\nCreates a repository webhook and connects GitHub events to your Telegram account.\n\n~~~text\n/newintegration owner/repository\n~~~\n\n### /listintegrations\n\nLists repositories currently connected to Telegram notifications.\n\n### /delintegration\n\nRemoves a repository integration and its configured webhook.\n\n~~~text\n/delintegration repository_id\n~~~\n\n## Repository control\n\nThe repository dashboard provides a single entry point for GitHub data and actions.\n\n~~~text\nRepository\n├── Files\n├── Commits\n├── Branches\n├── Tags\n├── Pull requests\n├── Issues\n├── Actions\n├── Releases\n├── Contributors\n└── Deployments\n~~~\n\nThe repository layer communicates directly with the GitHub REST API rather than maintaining a local Git mirror.\n\n## File editing and commits\n\nFile editing uses temporary sessions so changes can be reviewed before reaching GitHub.\n\n~~~text\nOpen file\n   ↓\nEdit content\n   ↓\nReview changes\n   ↓\nEnter commit message\n   ↓\nConfirm\n   ↓\nCreate Git objects\n   ↓\nUpdate branch\n~~~\n\nThe commit engine builds blobs, trees and commits through the GitHub API and checks the branch head before applying the final reference update.\n\n## Pull requests\n\nPull requests have their own management interface.\n\n### Review\n\n- Approve\n- Request changes\n- Submit a review comment\n- View existing reviews\n\n### Inspection\n\n- Changed files\n- Commit history\n- Review history\n- Branch information\n- Addition/deletion statistics\n\n### Lifecycle\n\n- Merge\n- Close\n- Reopen\n- Move draft PRs to ready for review\n\nMerge requests use the current PR head SHA when possible so an outdated Telegram view does not blindly merge a changed branch.\n\n## GitHub integrations\n\nRepository integrations create GitHub webhooks for supported events.\n\n~~~text\npush\npull_request\nissues\nrelease\nworkflow_run\nstar\n~~~\n\nWebhook requests are verified with GitHub’s X-Hub-Signature-256 HMAC signature before processing. GitHub recommends this signature for webhook validation. citeturn0search1turn0search3\n\nEach GitHub delivery ID is stored so duplicate deliveries are not repeatedly forwarded to the same Telegram integration.\n\n## Reply from Telegram\n\nSupported issue and pull-request notifications can be replied to directly.\n\n~~~text\nGitHub notification\n        ↓\nReply in Telegram\n        ↓\nGitHub issue / pull request comment\n~~~\n\n## Architecture\n\n~~~text\n                    ┌─────────────────────┐\n                    │       Telegram      │\n                    │   Bot / Inline UI   │\n                    └──────────┬──────────┘\n                               │\n                               ▼\n                    ┌─────────────────────┐\n                    │      Kurigram       │\n                    │    Bot Handlers     │\n                    └──────────┬──────────┘\n                               │\n             ┌─────────────────┼─────────────────┐\n             │                 │                 │\n             ▼                 ▼                 ▼\n      ┌────────────┐    ┌────────────┐    ┌────────────┐\n      │  GitHub    │    │   Redis    │    │  MongoDB   │\n      │ REST / App │    │  Sessions  │    │  Storage   │\n      └──────┬─────┘    └────────────┘    └────────────┘\n             │\n             ▼\n      ┌─────────────────┐\n      │     FastAPI     │\n      │ OAuth / Webhook │\n      └─────────────────┘\n~~~\n\n## Project structure\n\n~~~text\nGithub/\n├── github/\n│   ├── auth.py\n│   ├── client.py\n│   ├── commit.py\n│   ├── errors.py\n│   ├── oauth.py\n│   └── repositories.py\n│\n├── handlers/\n│   ├── commits.py\n│   ├── files.py\n│   ├── integrations.py\n│   ├── oauth.py\n│   ├── pulls.py\n│   ├── replies.py\n│   ├── repos.py\n│   └── start.py\n│\n├── app.py\n├── bot.py\n├── buttons.py\n├── config.py\n├── state.py\n├── storage.py\n└── web.py\n~~~\n\n## Configuration\n\nCopy the example environment file and provide the required credentials:\n\n~~~bash\ncp .env.example .env\n~~~\n\n~~~env\nBOT_TOKEN=\nAPI_ID=\nAPI_HASH=\nMONGO_URI=\n\nGITHUB_APP_ID=\nGITHUB_INSTALLATION_ID=\nGITHUB_PRIVATE_KEY=\n\nGITHUB_CLIENT_ID=\nGITHUB_CLIENT_SECRET=\nGITHUB_WEBHOOK_SECRET=\n\nTOKEN_ENCRYPTION_KEY=\nWEBHOOK_URL=\nREDIS_URL=\nLOG_CHAT_ID=\n~~~\n\n### Token encryption\n\n<code>TOKEN_ENCRYPTION_KEY</code> is a Fernet key used to encrypt GitHub OAuth access and refresh tokens before MongoDB storage.\n\nGenerate one with:\n\n~~~bash\npython -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"\n~~~\n\nKeep this key stable. If it changes, previously encrypted GitHub credentials cannot be decrypted.\n\n## GitHub OAuth callback\n\nSet the GitHub OAuth callback to:\n\n~~~text\nhttps://your-domain.example/oauth/callback\n~~~\n\nThe value must correspond to <code>WEBHOOK_URL</code>:\n\n~~~env\nWEBHOOK_URL=https://your-domain.example\n~~~\n\n## Webhook endpoint\n\nGitHub repository integrations send events to:\n\n~~~text\nPOST /webhooks/github\n~~~\n\nThe service also exposes:\n\n~~~text\nGET /health\nGET /oauth/callback\n~~~\n\nThe webhook endpoint validates the GitHub signature before accepting an event. Repository webhook creation is supported through GitHub’s repository hooks API. citeturn0search0\n\n## Run locally\n\n~~~bash\npip install -r requirements.txt\npython -m Github\n~~~\n\nFastAPI listens on port <code>8000</code> by default and uses the deployment platform’s <code>PORT</code> when provided.\n\n## Docker\n\n~~~bash\ndocker build -t github-telegram .\ndocker run --env-file .env -p 8000:8000 github-telegram\n~~~\n\n## Production requirements\n\n- GitHub App\n- GitHub OAuth application\n- MongoDB\n- Redis\n- Public HTTPS URL\n- Telegram bot credentials\n- Stable Fernet encryption key\n\nNever commit <code>.env</code>, private keys or OAuth secrets.\n\n## Security model\n\n**GitHub App authentication** — application-level GitHub access and installation authentication.\n\n**User OAuth** — acts on behalf of the connected GitHub user.\n\n**Stored credentials** — OAuth access and refresh tokens are encrypted before MongoDB storage.\n\n**Webhook verification** — GitHub webhook signatures are validated before processing.\n\n**Temporary sessions** — editing and review state can live in Redis with automatic expiration.\n\n## Current status\n\n### Implemented\n\n- Telegram GitHub control center\n- GitHub OAuth + PKCE\n- Encrypted OAuth token storage\n- GitHub App installation authentication\n- Repository browsing\n- Branch browsing\n- File browsing\n- File editing\n- Git object based commits\n- Commit conflict protection\n- Pull request management\n- Pull request reviews\n- Pull request merge / close / reopen\n- Repository webhooks\n- GitHub event notifications\n- Telegram replies to issue / PR notifications\n- Redis session support\n- MongoDB persistence\n- FastAPI health / OAuth / webhook service\n- Docker deployment\n\n### Pending\n\n- GitHub Actions control center\n- Workflow dispatch with inputs\n- Workflow run monitoring\n- Job logs and artifacts\n- Issue management\n- Reviewer assignment UI\n- Multi-file commit staging\n- Rich diff viewer\n- Telegram WebApp code editor\n- More webhook event controls\n- Repository and account settings\n\n## License\n\nSee the repository license for usage and distribution terms.\n\n---\n\n<div align="center">\n\n**GitHub for Telegram**\n\nBuilt around GitHub’s API, Telegram and a focused management workflow.\n\n</div>\n
+<div align="center">
+
+# GitHub for Telegram
+
+**A GitHub control center built for Telegram.**
+
+Manage repositories, branches, files, commits, pull requests, reviews and repository notifications without leaving Telegram.
+
+<p>
+  <img src="https://i.ibb.co/WWS60dJP/tmp-otmadsf.jpg" alt="GitHub for Telegram preview" width="850">
+</p>
+
+</div>
+
+---
+
+## Overview
+
+GitHub for Telegram brings practical GitHub repository management into a focused Telegram interface.
+
+It combines a Telegram bot, GitHub OAuth, GitHub App authentication, FastAPI webhooks, MongoDB and Redis into one service.
+
+The goal is simple: **browse, review and manage GitHub work from Telegram without turning the bot into a noisy dashboard.**
+
+## Features
+
+| Area | Features |
+| --- | --- |
+| Repositories | Browse, search and open repository dashboards |
+| Source | Browse branches, directories and files |
+| Files | Read and edit file contents |
+| Commits | Review changes and create commits from Telegram |
+| Pull requests | View PRs, files, commits and reviews |
+| PR reviews | Approve, request changes or leave review comments |
+| PR lifecycle | Merge, close, reopen and move drafts to review |
+| Integrations | Connect repositories for GitHub event notifications |
+| Notifications | Push, PR, issue, release, Actions and star events |
+| Replies | Reply to supported GitHub notifications from Telegram |
+| Authentication | GitHub OAuth with PKCE and encrypted token storage |
+| Web service | FastAPI health, OAuth callback and webhook receiver |
+| Sessions | Redis-backed editing and review sessions |
+
+## Commands
+
+~~~text
+/start
+/connect
+/repos
+
+/newintegration owner/repository
+/listintegrations
+/delintegration repository_id
+~~~
+
+### /connect
+
+Starts the GitHub OAuth authorization flow with PKCE.
+
+### /repos
+
+Opens the repository browser and repository-level management interface.
+
+### /newintegration
+
+Creates a repository webhook and connects GitHub events to your Telegram account.
+
+~~~text
+/newintegration owner/repository
+~~~
+
+### /listintegrations
+
+Lists repositories currently connected to Telegram notifications.
+
+### /delintegration
+
+Removes a repository integration and its configured webhook.
+
+~~~text
+/delintegration repository_id
+~~~
+
+## Repository control
+
+The repository dashboard provides a single entry point for GitHub data and actions.
+
+~~~text
+Repository
+├── Files
+├── Commits
+├── Branches
+├── Tags
+├── Pull requests
+├── Issues
+├── Actions
+├── Releases
+├── Contributors
+└── Deployments
+~~~
+
+The repository layer communicates directly with the GitHub REST API rather than maintaining a local Git mirror.
+
+## File editing and commits
+
+File editing uses temporary sessions so changes can be reviewed before reaching GitHub.
+
+~~~text
+Open file
+   ↓
+Edit content
+   ↓
+Review changes
+   ↓
+Enter commit message
+   ↓
+Confirm
+   ↓
+Create Git objects
+   ↓
+Update branch
+~~~
+
+The commit engine builds blobs, trees and commits through the GitHub API and checks the branch head before applying the final reference update.
+
+## Pull requests
+
+Pull requests have their own management interface.
+
+### Review
+
+- Approve
+- Request changes
+- Submit a review comment
+- View existing reviews
+
+### Inspection
+
+- Changed files
+- Commit history
+- Review history
+- Branch information
+- Addition/deletion statistics
+
+### Lifecycle
+
+- Merge
+- Close
+- Reopen
+- Move draft PRs to ready for review
+
+Merge requests use the current PR head SHA when possible so an outdated Telegram view does not blindly merge a changed branch.
+
+## GitHub integrations
+
+Repository integrations create GitHub webhooks for supported events.
+
+~~~text
+push
+pull_request
+issues
+release
+workflow_run
+star
+~~~
+
+Webhook requests are verified with GitHub’s X-Hub-Signature-256 HMAC signature before processing. GitHub recommends this signature for webhook validation. citeturn0search1turn0search3
+
+Each GitHub delivery ID is stored so duplicate deliveries are not repeatedly forwarded to the same Telegram integration.
+
+## Reply from Telegram
+
+Supported issue and pull-request notifications can be replied to directly.
+
+~~~text
+GitHub notification
+        ↓
+Reply in Telegram
+        ↓
+GitHub issue / pull request comment
+~~~
+
+## Architecture
+
+~~~text
+                    ┌─────────────────────┐
+                    │       Telegram      │
+                    │   Bot / Inline UI   │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │      Kurigram       │
+                    │    Bot Handlers     │
+                    └──────────┬──────────┘
+                               │
+             ┌─────────────────┼─────────────────┐
+             │                 │                 │
+             ▼                 ▼                 ▼
+      ┌────────────┐    ┌────────────┐    ┌────────────┐
+      │  GitHub    │    │   Redis    │    │  MongoDB   │
+      │ REST / App │    │  Sessions  │    │  Storage   │
+      └──────┬─────┘    └────────────┘    └────────────┘
+             │
+             ▼
+      ┌─────────────────┐
+      │     FastAPI     │
+      │ OAuth / Webhook │
+      └─────────────────┘
+~~~
+
+## Project structure
+
+~~~text
+Github/
+├── github/
+│   ├── auth.py
+│   ├── client.py
+│   ├── commit.py
+│   ├── errors.py
+│   ├── oauth.py
+│   └── repositories.py
+│
+├── handlers/
+│   ├── commits.py
+│   ├── files.py
+│   ├── integrations.py
+│   ├── oauth.py
+│   ├── pulls.py
+│   ├── replies.py
+│   ├── repos.py
+│   └── start.py
+│
+├── app.py
+├── bot.py
+├── buttons.py
+├── config.py
+├── state.py
+├── storage.py
+└── web.py
+~~~
+
+## Configuration
+
+Copy the example environment file and provide the required credentials:
+
+~~~bash
+cp .env.example .env
+~~~
+
+~~~env
+BOT_TOKEN=
+API_ID=
+API_HASH=
+MONGO_URI=
+
+GITHUB_APP_ID=
+GITHUB_INSTALLATION_ID=
+GITHUB_PRIVATE_KEY=
+
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GITHUB_WEBHOOK_SECRET=
+
+TOKEN_ENCRYPTION_KEY=
+WEBHOOK_URL=
+REDIS_URL=
+LOG_CHAT_ID=
+~~~
+
+### Token encryption
+
+<code>TOKEN_ENCRYPTION_KEY</code> is a Fernet key used to encrypt GitHub OAuth access and refresh tokens before MongoDB storage.
+
+Generate one with:
+
+~~~bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+~~~
+
+Keep this key stable. If it changes, previously encrypted GitHub credentials cannot be decrypted.
+
+## GitHub OAuth callback
+
+Set the GitHub OAuth callback to:
+
+~~~text
+https://your-domain.example/oauth/callback
+~~~
+
+The value must correspond to <code>WEBHOOK_URL</code>:
+
+~~~env
+WEBHOOK_URL=https://your-domain.example
+~~~
+
+## Webhook endpoint
+
+GitHub repository integrations send events to:
+
+~~~text
+POST /webhooks/github
+~~~
+
+The service also exposes:
+
+~~~text
+GET /health
+GET /oauth/callback
+~~~
+
+The webhook endpoint validates the GitHub signature before accepting an event. Repository webhook creation is supported through GitHub’s repository hooks API. citeturn0search0
+
+## Run locally
+
+~~~bash
+pip install -r requirements.txt
+python -m Github
+~~~
+
+FastAPI listens on port <code>8000</code> by default and uses the deployment platform’s <code>PORT</code> when provided.
+
+## Docker
+
+~~~bash
+docker build -t github-telegram .
+docker run --env-file .env -p 8000:8000 github-telegram
+~~~
+
+## Production requirements
+
+- GitHub App
+- GitHub OAuth application
+- MongoDB
+- Redis
+- Public HTTPS URL
+- Telegram bot credentials
+- Stable Fernet encryption key
+
+Never commit <code>.env</code>, private keys or OAuth secrets.
+
+## Security model
+
+**GitHub App authentication** — application-level GitHub access and installation authentication.
+
+**User OAuth** — acts on behalf of the connected GitHub user.
+
+**Stored credentials** — OAuth access and refresh tokens are encrypted before MongoDB storage.
+
+**Webhook verification** — GitHub webhook signatures are validated before processing.
+
+**Temporary sessions** — editing and review state can live in Redis with automatic expiration.
+
+## Current status
+
+### Implemented
+
+- Telegram GitHub control center
+- GitHub OAuth + PKCE
+- Encrypted OAuth token storage
+- GitHub App installation authentication
+- Repository browsing
+- Branch browsing
+- File browsing
+- File editing
+- Git object based commits
+- Commit conflict protection
+- Pull request management
+- Pull request reviews
+- Pull request merge / close / reopen
+- Repository webhooks
+- GitHub event notifications
+- Telegram replies to issue / PR notifications
+- Redis session support
+- MongoDB persistence
+- FastAPI health / OAuth / webhook service
+- Docker deployment
+
+### Pending
+
+- GitHub Actions control center
+- Workflow dispatch with inputs
+- Workflow run monitoring
+- Job logs and artifacts
+- Issue management
+- Reviewer assignment UI
+- Multi-file commit staging
+- Rich diff viewer
+- Telegram WebApp code editor
+- More webhook event controls
+- Repository and account settings
+
+## License
+
+See the repository license for usage and distribution terms.
+
+---
+
+<div align="center">
+
+**GitHub for Telegram**
+
+Built around GitHub’s API, Telegram and a focused management workflow.
+
+</div>
