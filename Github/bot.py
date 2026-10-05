@@ -29,7 +29,7 @@ class GitHubBot:
         self.sessions = SessionStore(config.redis_url)
         self.store = GitHubStore(config.mongo_uri, config.token_encryption_key)
         self.auth = GitHubAppAuth(config.github_app_id, config.github_private_key, timeout=config.request_timeout, api_version=config.github_api_version, base_url=config.github_api_url)
-        self.oauth = GitHubOAuth(config.github_client_id, config.github_client_secret, f"{config.webhook_url}{config.oauth_callback_path}")
+        self.oauth = GitHubOAuth(config.github_client_id, config.github_client_secret, f"{config.webhook_url}{config.oauth_callback_path}", timeout=config.request_timeout, api_version=config.github_api_version)
         self.web = build_web(self, self.oauth, self.sessions, self.store)
         self._auth_task: asyncio.Task | None = None
         self._registered = False
