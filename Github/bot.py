@@ -13,6 +13,7 @@ from .handlers.integrations import register as register_integrations
 from .handlers.pulls import register as register_pulls
 from .handlers.replies import register as register_replies
 from .handlers.actions import register as register_actions
+from .handlers.commands import register as register_commands
 from .state import SessionStore
 from .storage import GitHubStore
 from .web import build_web
@@ -61,6 +62,7 @@ class GitHubBot:
         register_pulls(self.app, self.store, self.sessions, self.oauth)
         register_replies(self.app, self.store, self.oauth)
         register_actions(self.app, self.store, self.oauth)
+        register_commands(self.app, self.store, self.oauth)
         self._registered = True
         return self
 
