@@ -57,7 +57,7 @@ class GitHubBot:
         if self._registered:
             return self
         register_start(self.app)
-        register_repositories(self.app, self.repositories, self.sessions)
+        register_repositories(self.app, self.repositories, self.sessions, self.store)
         register_files(self.app, self.repositories, self.sessions)
         register_oauth(self.app, self.oauth, self.sessions, self.store)
         register_integrations(self.app, self.store, self.oauth, self.config.webhook_url, self.config.github_webhook_secret)
