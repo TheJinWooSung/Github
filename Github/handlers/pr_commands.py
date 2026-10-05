@@ -59,7 +59,8 @@ def register(app, store: GitHubStore, oauth):
                     head, base = args[0], args[1]
                     title = " ".join(args[2:])
                     body = ""
-                service, repo = await repo_context(message)
+                linked = await store.current_repository(message.from_user.id)
+                repo = await service.get_by_id(int(linked["repository_id"])) if linked else None
                 if not repo:
                     await message.reply_text(REPO_REQUIRED)
                     return
