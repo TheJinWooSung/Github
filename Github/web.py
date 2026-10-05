@@ -75,14 +75,14 @@ def build_web(bot, oauth, sessions, store):
             payload = json.loads(body)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid JSON payload")
-        if await store.delivery_seen(x_github_delivery):
-            return {"status": "duplicate"}
         repository_id = payload.get("repository", {}).get("id")
         if not repository_id:
             return {"status": "ignored"}
         integrations = await store.integrations_for_repository(repository_id)
         text, number = event_text(x_github_event, payload)
         for integration in integrations:
+            if not await store.claim_delivery(x_github_delivery, integration["telegram_id"], repository_id, x_github_event, number, 0):
+                continue
             message = await bot.app.send_message(integration["telegram_id"], text)
             await store.save_delivery(x_github_delivery, integration["telegram_id"], repository_id, x_github_event, number, message.id)
         return {"status": "ok"}
