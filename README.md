@@ -43,6 +43,10 @@ The interface is designed around short actions and focused repository screens ra
 | PR lifecycle | Merge, close, reopen and handle drafts |
 | Integrations | Create and remove repository webhooks |
 | Notifications | Receive GitHub repository events in Telegram |
+| Linked repositories | Link, switch and remove repositories per Telegram user |
+| Releases | Latest release, creation and generated changelogs |
+| Search | Issues, pull requests and repository code search |
+| Actions | Workflow dispatch with inputs, runs, reruns, cancellation and logs |
 | Replies | Post supported GitHub comments from Telegram |
 | Authentication | OAuth with PKCE and encrypted token storage |
 | Sessions | Redis-backed temporary editing and review state |
@@ -75,12 +79,25 @@ Repository dashboard
 
 | Command | Purpose |
 | --- | --- |
-| `/start` | Open the GitHub control center |
-| `/connect` | Authorize a GitHub account |
-| `/repos` | Open connected repositories |
-| `/newintegration owner/repository` | Create a repository notification integration |
-| `/listintegrations` | List active integrations |
-| `/delintegration repository_id` | Remove an integration |
+| `/connect` `/disconnect` `/me` | GitHub authentication |
+| `/addrepo` `/removerepo` `/repos` `/repo` | Linked repository management |
+| `/star` `/unstar` `/watch` `/unwatch` | Repository subscriptions |
+| `/fork` `/archive` `/unarchive` `/default` | Repository state |
+| `/contributors` `/languages` `/branches` `/branch` | Repository information |
+| `/issue` `/comment` `/close` `/reopen` | Issue lifecycle |
+| `/assign` `/assignme` `/unassign` `/label` `/labels` | Issue metadata |
+| `/lock` `/unlock` `/pin` `/unpin` `/milestone` | Issue moderation |
+| `/commit` `/commits` `/compare` | Commit history and comparisons |
+| `/approve` `/requestchanges` `/merge` | Pull request review and merge |
+| `/draft` `/ready` `/checks` `/files` `/diff` `/reviews` | Pull request inspection |
+| `/request` `/pr` | Reviewer and pull request search |
+| `/actions` `/run` `/rerun` `/cancel` `/logs` | GitHub Actions control |
+| `/release` `/changelog` | Releases and release notes |
+| `/find` `/search` | Issue and code search |
+| `/stats` `/activity` `/settings` | Repository monitoring |
+| `/mute` `/done` `/read` | Telegram notification state |
+| `/newintegration` `/listintegrations` `/delintegration` | GitHub webhook integrations |
+| `/privacy` `/help` | Privacy and command reference |
 
 ## Repository management
 
@@ -364,17 +381,23 @@ For production, provide a public HTTPS endpoint, persistent MongoDB/Redis instan
 - [x] Run cancellation and reruns
 - [x] Workflow jobs and logs
 - [x] Workflow artifacts
+- [x] Workflow dispatch inputs through command arguments
+- [x] Issue management commands
+- [x] Reviewer assignment commands
+- [x] Safe merge confirmation
+- [x] Release and changelog commands
+- [x] Repository linked-context management
+- [x] Notification preferences
+- [x] OAuth authorization revocation
+- [x] Python compile CI
 
-### Next
+### Remaining product expansion
 
-- [ ] Workflow dispatch inputs
-- [ ] Issue management
-- [ ] Reviewer assignment UI
-- [ ] Multi-file commit staging
-- [ ] Rich diff viewer
+- [ ] Multi-file commit staging UI
 - [ ] Telegram WebApp editor
-- [ ] Additional webhook controls
-- [ ] Repository and account settings
+- [ ] Rich interactive diff viewer
+- [ ] GitHub Discussions UI and answer workflow
+- [ ] Full webhook event management UI
 
 ## Development
 
