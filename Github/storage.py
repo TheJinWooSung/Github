@@ -5,7 +5,7 @@ from cryptography.fernet import Fernet
 class GitHubStore:
     def __init__(self, mongo_uri: str, encryption_key: str):
         self.client = AsyncIOMotorClient(mongo_uri)
-        self.db = self.client.get_default_database()
+        self.db = self.client.get_default_database() or self.client["github"]
         self.users = self.db["github_users"]
         self.integrations = self.db["github_integrations"]
         self.cipher = Fernet(encryption_key.encode())
@@ -19,6 +19,9 @@ class GitHubStore:
         now = datetime.now(timezone.utc)
         update = {"telegram_id": telegram_id, "github_id": profile["id"], "login": profile["login"], "avatar_url": profile.get("avatar_url"), "access_token": self.cipher.encrypt(grant.access_token.encode()).decode(), "refresh_token": self.cipher.encrypt(grant.refresh_token.encode()).decode() if grant.refresh_token else None, "expires_in": grant.expires_in, "refresh_token_expires_in": grant.refresh_token_expires_in, "access_expires_at": now + timedelta(seconds=grant.expires_in or 0), "refresh_token_expires_at": now + timedelta(seconds=grant.refresh_token_expires_in or 0) if grant.refresh_token_expires_in else None, "scope": grant.scope, "updated_at": now}
         await self.users.update_one({"telegram_id": telegram_id}, {"$set": update, "$setOnInsert": {"created_at": now}}, upsert=True)
+
+    async def disconnect_user(self, telegram_id: int) -> None:
+        await self.users.update_one({"telegram_id": telegram_id}, {"$set": {"access_token": None, "refresh_token": None, "scope": "", "access_expires_at": None, "refresh_token_expires_at": None}})
 
     async def get_user(self, telegram_id: int):
         return await self.users.find_one({"telegram_id": telegram_id})
