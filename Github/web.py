@@ -20,36 +20,60 @@ def event_text(event: str, payload: dict) -> tuple[str, int | None]:
     if event == "push":
         ref = html.escape(payload.get("ref", "").removeprefix("refs/heads/"))
         count = len(payload.get("commits", []))
-        return f"<b>{repository}</b>\n\n<b>Push</b> · <code>{ref}</code>\n{sender} pushed {count} commit(s).", None
+        return f"<b>{repository}</b>
+
+<b>Push</b> · <code>{ref}</code>
+{sender} pushed {count} commit(s).", None
     if event == "pull_request":
         item = payload.get("pull_request", {})
         number = item.get("number") or payload.get("number")
         title = html.escape(item.get("title", "Pull request"))
-        return f"<b>{repository}</b>\n\n<b>Pull request #{number}</b> · {action}\n{title}\nby <code>{sender}</code>", number
+        return f"<b>{repository}</b>
+
+<b>Pull request #{number}</b> · {action}
+{title}
+by <code>{sender}</code>", number
     if event == "issues":
         item = payload.get("issue", {})
         number = item.get("number")
         title = html.escape(item.get("title", "Issue"))
-        return f"<b>{repository}</b>\n\n<b>Issue #{number}</b> · {action}\n{title}\nby <code>{sender}</code>", number
+        return f"<b>{repository}</b>
+
+<b>Issue #{number}</b> · {action}
+{title}
+by <code>{sender}</code>", number
     if event == "release":
         release = payload.get("release", {})
         title = html.escape(release.get("name") or release.get("tag_name", "release"))
-        return f"<b>{repository}</b>\n\n<b>Release</b> · {action}\n{title}", None
+        return f"<b>{repository}</b>
+
+<b>Release</b> · {action}
+{title}", None
     if event == "workflow_run":
         run = payload.get("workflow_run", {})
         name = html.escape(run.get("name", "workflow"))
         state = html.escape(run.get("conclusion") or run.get("status", "unknown"))
-        return f"<b>{repository}</b>\n\n<b>Actions</b> · {action}\n{name} · <code>{state}</code>", run.get("id")
+        return f"<b>{repository}</b>
+
+<b>Actions</b> · {action}
+{name} · <code>{state}</code>", run.get("id")
     if event == "star":
-        return f"<b>{repository}</b>\n\n<b>Star</b> · {action}\nby <code>{sender}</code>", None
-    return f"<b>{repository}</b>\n\n<b>{html.escape(event)}</b> · {action}\nby <code>{sender}</code>", None
+        return f"<b>{repository}</b>
+
+<b>Star</b> · {action}
+by <code>{sender}</code>", None
+    return f"<b>{repository}</b>
+
+<b>{html.escape(event)}</b> · {action}
+by <code>{sender}</code>", None
 
 def validate_webapp_init_data(init_data: str, bot_token: str, max_age: int = 86400) -> int:
     from urllib.parse import parse_qsl
     fields = dict(parse_qsl(init_data, keep_blank_values=True))
     received_hash = fields.pop("hash", None)
     if not received_hash: raise HTTPException(status_code=403, detail="Invalid Telegram WebApp data")
-    check_string = "\n".join(f"{key}={value}" for key, value in sorted(fields.items()))
+    check_string = "
+".join(f"{key}={value}" for key, value in sorted(fields.items()))
     secret = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
     expected = hmac.new(secret, check_string.encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected, received_hash): raise HTTPException(status_code=403, detail="Invalid Telegram WebApp data")
@@ -79,7 +103,9 @@ def build_web(bot, oauth, sessions, store):
             grant = await oauth.exchange(code, session.verifier)
             profile = await oauth.user(grant.access_token)
             await store.save_user(session.telegram_id, profile, grant)
-            await bot.app.send_message(session.telegram_id, "<b>GitHub connected</b>\n\nYour GitHub account is now authorized.")
+            await bot.app.send_message(session.telegram_id, "<b>GitHub connected</b>
+
+Your GitHub account is now authorized.")
             await sessions.delete(state)
             return HTMLResponse("<h2>GitHub connected</h2><p>You can return to Telegram.</p>")
         except Exception:
@@ -108,7 +134,8 @@ def build_web(bot, oauth, sessions, store):
         content = data.get("content", "")
         if data.get("encoding") == "base64":
             import base64
-            content = base64.b64decode(content.replace("\n", "")).decode("utf-8", errors="replace")
+            content = base64.b64decode(content.replace("
+", "")).decode("utf-8", errors="replace")
         return {"repository": linked["full_name"], "path": path, "branch": branch, "content": content}
 
     @app.post("/api/webapp/commit")
@@ -130,7 +157,8 @@ def build_web(bot, oauth, sessions, store):
         old_content = old.get("content", "")
         if old.get("encoding") == "base64":
             import base64
-            old_content = base64.b64decode(old_content.replace("\n", "")).decode("utf-8", errors="replace")
+            old_content = base64.b64decode(old_content.replace("
+", "")).decode("utf-8", errors="replace")
         if content == old_content: raise HTTPException(status_code=400, detail="No changes were made")
         plan = CommitPlan(linked["full_name"], branch, message, [FileChange(path, "modified", content)])
         result = await CommitEngine(service).execute(plan, expected_head=current)
