@@ -123,8 +123,7 @@ def register(app, store: GitHubStore, oauth):
                 lines.append(escape(user["email"]))
             if user.get("html_url"):
                 lines.append(escape(user["html_url"]))
-            await message.reply_text("
-".join(lines))
+            await message.reply_text("\n".join(lines))
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
 
@@ -157,9 +156,7 @@ def register(app, store: GitHubStore, oauth):
             repo = await service.get(owner, name)
             await store.add_repository(message.from_user.id, repo)
             await store.set_current_repository(message.from_user.id, int(repo["id"]))
-            await message.reply_text(f"<b>Repository linked</b>
-
-<code>{escape(repo['full_name'])}</code>")
+            await message.reply_text(f"<b>Repository linked</b>\n\n<code>{escape(repo['full_name'])}</code>")
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
 
@@ -183,15 +180,12 @@ def register(app, store: GitHubStore, oauth):
             return
         items = await store.list_repositories(message.from_user.id)
         if not items:
-            await message.reply_text("<b>No linked repositories.</b>
-
-Use /addrepo owner/repo.")
+            await message.reply_text("<b>No linked repositories.</b>\n\nUse /addrepo owner/repo.")
             return
         lines = ["<b>Linked repositories</b>"]
         for item in items:
             marker = " · current" if (await store.current_repository(message.from_user.id) or {}).get("repository_id") == item["repository_id"] else ""
-            lines.append(f"
-<code>{escape(item['full_name'])}</code>{marker}")
+            lines.append(f"\n<code>{escape(item['full_name'])}</code>{marker}")
         await message.reply_text("".join(lines), reply_markup=repository_buttons(items))
 
     @app.on_message(filters.command("repo"))
@@ -216,8 +210,7 @@ Use /addrepo owner/repo.")
                 f"stars {data.get('stargazers_count', 0)} · forks {data.get('forks_count', 0)} · issues {data.get('open_issues_count', 0)}",
                 f"watchers {data.get('subscribers_count', 0)} · size {data.get('size', 0)} KB",
             ]
-            await message.reply_text("
-".join(lines))
+            await message.reply_text("\n".join(lines))
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
 
@@ -260,9 +253,7 @@ Use /addrepo owner/repo.")
         try:
             target = message.command[1] if len(message.command) > 1 else ""
             data = await service.fork(owner, name, organization=target if target and "/" not in target else None, repository=target if target and "/" not in target else None)
-            await message.reply_text(f"<b>Fork created</b>
-
-<code>{escape(data.get('full_name', 'fork'))}</code>")
+            await message.reply_text(f"<b>Fork created</b>\n\n<code>{escape(data.get('full_name', 'fork'))}</code>")
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
 
@@ -277,19 +268,16 @@ Use /addrepo owner/repo.")
             if action == "contributors":
                 items = await service.contributors(owner, name)
                 lines = [f"<b>{escape(repo['full_name'])}</b>"]
-                lines.extend(f"
-{index}. <code>{escape(item.get('login') or 'unknown')}</code> · {item.get('contributions', 0)}" for index, item in enumerate(items[:20], 1))
+                lines.extend(f"\n{index}. <code>{escape(item.get('login') or 'unknown')}</code> · {item.get('contributions', 0)}" for index, item in enumerate(items[:20], 1))
             elif action == "languages":
                 data = await service.languages(owner, name)
                 total = sum(data.values()) or 1
                 lines = [f"<b>{escape(repo['full_name'])}</b>"]
-                lines.extend(f"
-<code>{escape(key)}</code> · {value / total * 100:.1f}%" for key, value in sorted(data.items(), key=lambda pair: pair[1], reverse=True))
+                lines.extend(f"\n<code>{escape(key)}</code> · {value / total * 100:.1f}%" for key, value in sorted(data.items(), key=lambda pair: pair[1], reverse=True))
             else:
                 items = await service.branches(owner, name)
                 lines = [f"<b>{escape(repo['full_name'])}</b>"]
-                lines.extend(f"
-<code>{escape(item.get('name', 'branch'))}</code>" for item in items[:40])
+                lines.extend(f"\n<code>{escape(item.get('name', 'branch'))}</code>" for item in items[:40])
             await message.reply_text("".join(lines))
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
@@ -305,8 +293,7 @@ Use /addrepo owner/repo.")
             if not args:
                 items = await service.branches(owner, name)
                 lines = [f"<b>{escape(repo['full_name'])}</b>"]
-                lines.extend(f"
-<code>{escape(item.get('name', 'branch'))}</code>" for item in items[:40])
+                lines.extend(f"\n<code>{escape(item.get('name', 'branch'))}</code>" for item in items[:40])
                 await message.reply_text("".join(lines))
                 return
             action = args[0].lower()
@@ -318,9 +305,7 @@ Use /addrepo owner/repo.")
                 source = args[2] if len(args) > 2 else repo.get("default_branch", "main")
                 source_ref = await service.ref(owner, name, f"heads/{source}")
                 await service.create_branch(owner, name, branch_name, source_ref["object"]["sha"])
-                await message.reply_text(f"<b>Branch created.</b>
-
-<code>{escape(branch_name)}</code> ← <code>{escape(source)}</code>")
+                await message.reply_text(f"<b>Branch created.</b>\n\n<code>{escape(branch_name)}</code> ← <code>{escape(source)}</code>")
                 return
             if action == "delete":
                 if len(args) < 2:
@@ -331,9 +316,7 @@ Use /addrepo owner/repo.")
                     await message.reply_text("<b>The default branch cannot be deleted here.</b>")
                     return
                 await service.delete_branch(owner, name, branch_name)
-                await message.reply_text(f"<b>Branch deleted.</b>
-
-<code>{escape(branch_name)}</code>")
+                await message.reply_text(f"<b>Branch deleted.</b>\n\n<code>{escape(branch_name)}</code>")
                 return
             if action == "rename":
                 if len(args) < 3:
@@ -350,16 +333,11 @@ Use /addrepo owner/repo.")
                     except Exception:
                         pass
                     raise
-                await message.reply_text(f"<b>Branch renamed.</b>
-
-<code>{escape(old)}</code> → <code>{escape(new)}</code>")
+                await message.reply_text(f"<b>Branch renamed.</b>\n\n<code>{escape(old)}</code> → <code>{escape(new)}</code>")
                 return
             item = await service.branch(owner, name, args[0])
             commit = item.get("commit", {})
-            await message.reply_text(f"<b>{escape(item.get('name', 'branch'))}</b>
-
-<code>{escape(commit.get('sha', '')[:12])}</code>
-{escape(commit.get('commit', {}).get('message', ''))}")
+            await message.reply_text(f"<b>{escape(item.get('name', 'branch'))}</b>\n\n<code>{escape(commit.get('sha', '')[:12])}</code>\n{escape(commit.get('commit', {}).get('message', ''))}")
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
 
@@ -375,9 +353,7 @@ Use /addrepo owner/repo.")
         try:
             data = await service.update_repository(owner, name, default_branch=message.command[1])
             await store.add_repository(message.from_user.id, data)
-            await message.reply_text(f"<b>Default branch updated.</b>
-
-<code>{escape(data.get('default_branch', message.command[1]))}</code>")
+            await message.reply_text(f"<b>Default branch updated.</b>\n\n<code>{escape(data.get('default_branch', message.command[1]))}</code>")
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
 
@@ -394,9 +370,7 @@ Use /addrepo owner/repo.")
         owner, name = repo_parts(repo)
         try:
             item = await service.create_issue(owner, name, title.strip(), body.strip())
-            await message.reply_text(f"<b>Issue created</b>
-
-<code>#{item.get('number')}</code> {escape(item.get('title', title.strip()))}")
+            await message.reply_text(f"<b>Issue created</b>\n\n<code>#{item.get('number')}</code> {escape(item.get('title', title.strip()))}")
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
 
@@ -483,8 +457,7 @@ Use /addrepo owner/repo.")
                 await message.reply_text("<b>No labels.</b>")
                 return
             lines = [f"<b>Labels · {escape(repo['full_name'])}</b>"]
-            lines.extend(f"
-<code>{escape(item.get('name', 'label'))}</code>" for item in items[:80])
+            lines.extend(f"\n<code>{escape(item.get('name', 'label'))}</code>" for item in items[:80])
             await message.reply_text("".join(lines))
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
@@ -501,17 +474,11 @@ Use /addrepo owner/repo.")
         try:
             item = await service.commit(owner, name, message.command[1])
             data = item.get("commit", {})
-            message_text = escape((data.get("message") or "").split("
-", 1)[0])
+            message_text = escape((data.get("message") or "").split("\n", 1)[0])
             author = escape(data.get("author", {}).get("name") or item.get("author", {}).get("login") or "unknown")
             files = item.get("files") or []
             await message.reply_text(
-                f"<b>{escape(item.get('sha', '')[:12])}</b>
-
-{message_text}
-
-by <code>{author}</code>
-files {len(files)} · +{item.get('stats', {}).get('additions', 0)} -{item.get('stats', {}).get('deletions', 0)}"
+                f"<b>{escape(item.get('sha', '')[:12])}</b>\n\n{message_text}\n\nby <code>{author}</code>\nfiles {len(files)} · +{item.get('stats', {}).get('additions', 0)} -{item.get('stats', {}).get('deletions', 0)}"
             )
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
@@ -525,8 +492,7 @@ files {len(files)} · +{item.get('stats', {}).get('additions', 0)} -{item.get('s
         try:
             items = await service.commits(owner, name, message.command[1] if len(message.command) > 1 else None, per_page=30)
             lines = [f"<b>Commits · {escape(repo['full_name'])}</b>"]
-            lines.extend(f"
-<code>{escape(item.get('sha', '')[:10])}</code> {escape((item.get('commit', {}).get('message') or 'commit').split(chr(10), 1)[0])[:110]}" for item in items)
+            lines.extend(f"\n<code>{escape(item.get('sha', '')[:10])}</code> {escape((item.get('commit', {}).get('message') or 'commit').split(chr(10), 1)[0])[:110]}" for item in items)
             await message.reply_text("".join(lines) if items else "<b>No commits found.</b>")
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
@@ -549,8 +515,7 @@ files {len(files)} · +{item.get('stats', {}).get('additions', 0)} -{item.get('s
                 f"commits {item.get('total_commits', 0)} · files {len(item.get('files') or [])}",
             ]
             for file in (item.get("files") or [])[:25]:
-                lines.append(f"
-<code>{escape(file.get('status', 'modified'))}</code> {escape(file.get('filename', 'file'))} · +{file.get('additions', 0)} -{file.get('deletions', 0)}")
+                lines.append(f"\n<code>{escape(file.get('status', 'modified'))}</code> {escape(file.get('filename', 'file'))} · +{file.get('additions', 0)} -{file.get('deletions', 0)}")
             await message.reply_text("".join(lines))
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
@@ -570,9 +535,7 @@ files {len(files)} · +{item.get('stats', {}).get('additions', 0)} -{item.get('s
                 tag = args[1]
                 body = " ".join(args[2:]).strip()
                 data = await service.client.request("POST", f"/repos/{owner}/{name}/releases", json={"tag_name": tag, "name": tag, "body": body, "generate_release_notes": not bool(body), "draft": False, "prerelease": False})
-                await message.reply_text(f"<b>Release created</b>
-
-<code>{escape(data.get('tag_name', tag))}</code>")
+                await message.reply_text(f"<b>Release created</b>\n\n<code>{escape(data.get('tag_name', tag))}</code>")
                 return
             data = await service.client.request("GET", f"/repos/{owner}/{name}/releases/latest")
             lines = [
@@ -582,10 +545,8 @@ files {len(files)} · +{item.get('stats', {}).get('additions', 0)} -{item.get('s
                 escape(data.get("body") or "No release notes."),
             ]
             if data.get("html_url"):
-                lines.append(f"
-{escape(data['html_url'])}")
-            await message.reply_text("
-".join(lines)[:7000])
+                lines.append(f"\n{escape(data['html_url'])}")
+            await message.reply_text("\n".join(lines)[:7000])
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
 
@@ -599,9 +560,7 @@ files {len(files)} · +{item.get('stats', {}).get('additions', 0)} -{item.get('s
             data = await service.client.request("POST", f"/repos/{owner}/{name}/releases/generate-notes", json={"tag_name": message.command[1] if len(message.command) > 1 else "next-release"})
             name_text = data.get("name") or data.get("tag_name", "Release notes")
             body = data.get("body") or "No generated notes."
-            await message.reply_text(f"<b>{escape(name_text)}</b>
-
-{escape(body)}"[:7000])
+            await message.reply_text(f"<b>{escape(name_text)}</b>\n\n{escape(body)}"[:7000])
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
 
@@ -628,8 +587,7 @@ files {len(files)} · +{item.get('stats', {}).get('additions', 0)} -{item.get('s
                 title = "Code"
             lines = [f"<b>{title}</b>"]
             for item in items[:20]:
-                lines.append(f"
-<code>{escape(item.get('full_name') or item.get('title') or item.get('name', 'result'))}</code>")
+                lines.append(f"\n<code>{escape(item.get('full_name') or item.get('title') or item.get('name', 'result'))}</code>")
             await message.reply_text("".join(lines) if len(lines) > 1 else "<b>No results.</b>")
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
@@ -651,8 +609,7 @@ files {len(files)} · +{item.get('stats', {}).get('additions', 0)} -{item.get('s
                 f"size {data.get('size', 0)} KB",
                 f"network {data.get('network_count', 0)} · subscribers {data.get('subscribers_count', 0)}",
             ]
-            await message.reply_text("
-".join(lines))
+            await message.reply_text("\n".join(lines))
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
 
@@ -669,8 +626,7 @@ files {len(files)} · +{item.get('stats', {}).get('additions', 0)} -{item.get('s
                 actor = escape(event.get("pusher", {}).get("login", "unknown"))
                 ref = escape((event.get("ref") or "").removeprefix("refs/heads/"))
                 kind = escape(event.get("push_type") or "activity")
-                lines.append(f"
-<code>{kind}</code> · {actor} · {ref}")
+                lines.append(f"\n<code>{kind}</code> · {actor} · {ref}")
             await message.reply_text("".join(lines) if events else "<b>No recent activity.</b>")
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
@@ -691,13 +647,7 @@ files {len(files)} · +{item.get('stats', {}).get('additions', 0)} -{item.get('s
             current_settings = await store.get_settings(message.from_user.id)
         enabled = current_settings.get("notifications_enabled", True)
         events = current_settings.get("events", ["push", "pull_request", "issues", "release", "workflow_run", "star"])
-        await message.reply_text(f"<b>Settings</b>
-
-notifications <code>{'on' if enabled else 'off'}</code>
-events <code>{escape(', '.join(events))}</code>
-
-/settings on|off
-/settings events=push,pull_request,issues")
+        await message.reply_text(f"<b>Settings</b>\n\nnotifications <code>{'on' if enabled else 'off'}</code>\nevents <code>{escape(', '.join(events))}</code>\n\n/settings on|off\n/settings events=push,pull_request,issues")
 
     @app.on_message(filters.command("reload"))
     async def reload(client, message):
@@ -723,9 +673,7 @@ events <code>{escape(', '.join(events))}</code>
 
     @app.on_message(filters.command("privacy"))
     async def privacy(client, message):
-        await message.reply_text("<b>Privacy</b>
-
-GitHub OAuth tokens are encrypted before storage. Telegram messages used for commands and GitHub notifications are processed only to provide the requested bot functionality. Secrets are never stored in the repository.")
+        await message.reply_text("<b>Privacy</b>\n\nGitHub OAuth tokens are encrypted before storage. Telegram messages used for commands and GitHub notifications are processed only to provide the requested bot functionality. Secrets are never stored in the repository.")
 
     @app.on_message(filters.command("help"))
     async def help_command(client, message):
