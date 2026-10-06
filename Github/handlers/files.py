@@ -141,14 +141,14 @@ def register(app, service, sessions: SessionStore, webapp_url: str | None = None
             return
         if action == "clear":
             await sessions.delete(token)
-            await query.message.edit_text("<b>Staged changes cleared.</b>", reply_markup=back("nav:back"))
+            await query.message.edit_text(f"<b>{STAGED_CLEARED}</b>", reply_markup=back("nav:back"))
             return
         if action != "commit" or not stage.changes:
             await query.message.edit_text(staged_text(f"{stage.owner}/{stage.name}", stage.branch, stage.changes), reply_markup=stage_actions(token))
             return
         try:
             await query.message.edit_text(staged_text(f"{stage.owner}/{stage.name}", stage.branch, stage.changes))
-            await query.message.reply_text("Send the commit message.")
+            await query.message.reply_text(COMMIT_MESSAGE_PROMPT)
             stage.status = "awaiting_message"
             await sessions.set(token, stage)
         except Exception as exc:
