@@ -65,6 +65,15 @@ DELIVERY_LIST = "Webhook deliveries"
 DELIVERY_RETRY = "Retry"
 DELIVERY_REFRESH = "Refresh"
 DELIVERY_BACK = "Webhook events"
+REMOVE = "Remove"
+EDIT = "Edit"
+CANCEL = "Cancel"
+COMMIT = "Commit"
+PREVIOUS = "Previous"
+NEXT = "Next"
+DIRECTORY = "DIR  "
+WEB_EDITOR = "Web editor"
+DIFF = "Diff"
 WEBHOOK_EVENTS = ("push", "pull_request", "issues", "issue_comment", "pull_request_review", "release", "workflow_run", "workflow_job", "deployment", "deployment_status", "star", "fork", "create", "delete")
 
 PR_LIST = "Pull requests"
@@ -139,7 +148,7 @@ def start(connect_url: str | None = None):
 def integrations(items):
     rows = []
     for item in items[:50]:
-        rows.append(_row((item["full_name"][:42], f"integration:{item['repository_id']}:events"), ("Remove", f"integration:{item['repository_id']}:delete")))
+        rows.append(_row((item["full_name"][:42], f"integration:{item['repository_id']}:events"), (REMOVE, f"integration:{item['repository_id']}:delete")))
     rows.append(_row((CONNECT, "connect:start")))
     return InlineKeyboardMarkup(rows)
 
@@ -184,7 +193,7 @@ def repository(repository_id: int):
     return InlineKeyboardMarkup([_row((FILES, f"repo:{repository_id}:files"), (COMMITS, f"repo:{repository_id}:commits")), _row((BRANCHES, f"repo:{repository_id}:branches"), (TAGS, f"repo:{repository_id}:tags")), _row((PULL_REQUESTS, f"repo:{repository_id}:pulls"), (ISSUES, f"repo:{repository_id}:issues")), _row((ACTIONS, f"repo:{repository_id}:actions"), (RELEASES, f"repo:{repository_id}:releases")), _row((CONTRIBUTORS, f"repo:{repository_id}:contributors"), (DEPLOYMENTS, f"repo:{repository_id}:deployments")), _row((HOME, "nav:home"))])
 
 def commit_review(token: str):
-    return InlineKeyboardMarkup([_row(("Edit", f"edit:{token}"), ("Cancel", f"commit:{token}:cancel")), _row(("Commit", f"commit:{token}:confirm"))])
+    return InlineKeyboardMarkup([_row((EDIT, f"edit:{token}"), (CANCEL, f"commit:{token}:cancel")), _row((COMMIT, f"commit:{token}:confirm"))])
 
 def back(target: str = "nav:back"):
     return InlineKeyboardMarkup([_row((BACK, target))])
@@ -192,9 +201,9 @@ def back(target: str = "nav:back"):
 def pagination(prefix: str, page: int, has_next: bool = True):
     row = []
     if page > 1:
-        row.append(InlineKeyboardButton("Previous", callback_data=f"{prefix}:page:{page - 1}"))
+        row.append(InlineKeyboardButton(PREVIOUS, callback_data=f"{prefix}:page:{page - 1}"))
     if has_next:
-        row.append(InlineKeyboardButton("Next", callback_data=f"{prefix}:page:{page + 1}"))
+        row.append(InlineKeyboardButton(NEXT, callback_data=f"{prefix}:page:{page + 1}"))
     return InlineKeyboardMarkup([row, _row((BACK, "nav:back"))]) if row else back()
 
 def branches(items):
@@ -234,7 +243,7 @@ def files(items, browser_token: str, parent_token: str | None = None):
     rows = []
     for index, item in enumerate(items[:20]):
         name = item.get("name", "item")
-        label = f"DIR  {name}" if item.get("type") == "dir" else name
+        label = f"{DIRECTORY}{name}" if item.get("type") == "dir" else name
         rows.append(_row((label[:55], f"file:{browser_token}:{index}")))
     rows.append(_row((BACK, f"browse:{parent_token}:back" if parent_token else "nav:back")))
     return InlineKeyboardMarkup(rows)
@@ -244,7 +253,7 @@ def file_view(repository_id: int, edit_token: str, browser_token: str, webapp_ur
     if webapp_url and path is not None and branch is not None:
         from urllib.parse import urlencode
         url = webapp_url.rstrip("/") + "/webapp/editor?" + urlencode({"repo": repository_id, "path": path, "branch": branch})
-        rows.append([InlineKeyboardButton("Web editor", web_app=WebAppInfo(url=url))])
+        rows.append([InlineKeyboardButton(WEB_EDITOR, web_app=WebAppInfo(url=url))])
     rows.append(_row((BACK, f"browse:{browser_token}:back")))
     return InlineKeyboardMarkup(rows)
 
@@ -284,7 +293,7 @@ def pull_requests(items, repository_id: int, state: str = "open"):
 
 def pull_request_view(repository_id: int, number: int, state: str, draft: bool = False):
     rows = [
-        _row((PR_FILES, f"pr:{repository_id}:{number}:files"), (PR_COMMITS, f"pr:{repository_id}:{number}:commits"), ("Diff", f"pr:{repository_id}:{number}:diff")),
+        _row((PR_FILES, f"pr:{repository_id}:{number}:files"), (PR_COMMITS, f"pr:{repository_id}:{number}:commits"), (DIFF, f"pr:{repository_id}:{number}:diff")),
         _row((PR_REVIEWS, f"pr:{repository_id}:{number}:reviews"), (PR_COMMENT, f"pr:{repository_id}:{number}:comment")),
     ]
     if state == "open":
