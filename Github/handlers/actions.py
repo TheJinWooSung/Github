@@ -96,7 +96,7 @@ def register(app, store: GitHubStore, oauth):
         repository_id, workflow_id = int(repository_id), int(workflow_id)
         service = await service_for(query.from_user.id)
         if not service:
-            await query.message.edit_text(error_message("Connect GitHub first with /connect."))
+            await query.message.edit_text(error_message(ACTION_CONNECT_REQUIRED))
             return
         try:
             _, owner, name = await repository(service, repository_id)
@@ -114,7 +114,7 @@ def register(app, store: GitHubStore, oauth):
         repository_id, run_id = int(repository_id), int(run_id)
         service = await service_for(query.from_user.id)
         if not service:
-            await query.message.edit_text(error_message("Connect GitHub first with /connect."))
+            await query.message.edit_text(error_message(ACTION_CONNECT_REQUIRED))
             return
         try:
             _, owner, name = await repository(service, repository_id)
@@ -175,7 +175,7 @@ def register(app, store: GitHubStore, oauth):
         repository_id, run_id = int(repository_id), int(run_id)
         service = await service_for(query.from_user.id)
         if not service:
-            await query.message.edit_text(error_message("Connect GitHub first with /connect."))
+            await query.message.edit_text(error_message(ACTION_CONNECT_REQUIRED))
             return
         try:
             _, owner, name = await repository(service, repository_id)
@@ -201,7 +201,7 @@ def register(app, store: GitHubStore, oauth):
         repository_id, run_id = int(repository_id), int(run_id)
         service = await service_for(query.from_user.id)
         if not service:
-            await query.message.edit_text(error_message("Connect GitHub first with /connect."))
+            await query.message.edit_text(error_message(ACTION_CONNECT_REQUIRED))
             return
         try:
             _, owner, name = await repository(service, repository_id)
@@ -222,7 +222,7 @@ def register(app, store: GitHubStore, oauth):
         repository_id, run_id, job_id = int(repository_id), int(run_id), int(job_id)
         service = await service_for(query.from_user.id)
         if not service:
-            await query.message.edit_text(error_message("Connect GitHub first with /connect."))
+            await query.message.edit_text(error_message(ACTION_CONNECT_REQUIRED))
             return
         try:
             _, owner, name = await repository(service, repository_id)
@@ -270,7 +270,7 @@ def register(app, store: GitHubStore, oauth):
         repository_id, run_id, job_id = int(repository_id), int(run_id), int(job_id)
         service = await service_for(query.from_user.id)
         if not service:
-            await query.message.edit_text(error_message("Connect GitHub first with /connect."))
+            await query.message.edit_text(error_message(ACTION_CONNECT_REQUIRED))
             return
         try:
             _, owner, name = await repository(service, repository_id)
@@ -309,7 +309,7 @@ def register(app, store: GitHubStore, oauth):
         repository_id, artifact_id = int(repository_id), int(artifact_id)
         service = await service_for(query.from_user.id)
         if not service:
-            await query.message.edit_text(error_message("Connect GitHub first with /connect."))
+            await query.message.edit_text(error_message(ACTION_CONNECT_REQUIRED))
             return
         try:
             _, owner, name = await repository(service, repository_id)
