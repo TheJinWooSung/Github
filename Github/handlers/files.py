@@ -1,7 +1,7 @@
 import base64
 import difflib
 from pyrogram import filters
-from ..buttons import back, files, file_view, files_text, file_text, error_message, commit_preview, CommitView, commit_review, edit_prompt, commit_prompt, commit_result, stage_actions, staged_text, SESSION_EXPIRED, COMMIT_SESSION_EXPIRED, COMMIT_CANCELLED, UNCHANGED_FILE, INVALID_COMMIT_MESSAGE
+from ..buttons import back, files, file_view, files_text, file_text, error_message, commit_preview, CommitView, commit_review, edit_prompt, commit_prompt, commit_result, stage_actions, staged_text, SESSION_EXPIRED, COMMIT_SESSION_EXPIRED, COMMIT_CANCELLED, STAGED_CLEARED, COMMIT_MESSAGE_PROMPT, UNCHANGED_FILE, INVALID_COMMIT_MESSAGE
 from ..state import EditSession, BrowserSession, SessionStore, CommitStageSession, StagedChange
 from ..github.commit import CommitEngine, CommitPlan, FileChange
 
