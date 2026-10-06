@@ -76,21 +76,15 @@ def register(app, store: GitHubStore, oauth):
             repo, owner, name = await repository(service, repository_id)
             if section == "workflows":
                 items = (await service.workflows(owner, name)).get("workflows", [])
-                text = f"<b>{escape(repo['full_name'])}</b>
-
-<b>{ACTION_WORKFLOWS}</b>"
+                text = f"<b>{escape(repo['full_name'])}</b>\n\n<b>{ACTION_WORKFLOWS}</b>"
                 await query.message.edit_text(text, reply_markup=action_workflows(items, repository_id))
             elif section == "runs":
                 items = (await service.workflow_runs(owner, name)).get("workflow_runs", [])
-                text = f"<b>{escape(repo['full_name'])}</b>
-
-<b>{ACTION_RUNS}</b>"
+                text = f"<b>{escape(repo['full_name'])}</b>\n\n<b>{ACTION_RUNS}</b>"
                 await query.message.edit_text(text, reply_markup=action_runs(items, repository_id))
             else:
                 items = (await service.artifacts(owner, name)).get("artifacts", [])
-                text = f"<b>{escape(repo['full_name'])}</b>
-
-<b>{ACTION_ARTIFACTS}</b>"
+                text = f"<b>{escape(repo['full_name'])}</b>\n\n<b>{ACTION_ARTIFACTS}</b>"
                 await query.message.edit_text(text, reply_markup=action_artifacts(items, repository_id))
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)))
@@ -108,9 +102,7 @@ def register(app, store: GitHubStore, oauth):
             _, owner, name = await repository(service, repository_id)
             item = await service.workflow(owner, name, workflow_id)
             runs = (await service.workflow_runs_for(owner, name, workflow_id)).get("workflow_runs", [])
-            text = workflow_text(item) + f"
-
-<b>{ACTION_RUNS}</b>  {len(runs)}"
+            text = workflow_text(item) + f"\n\n<b>{ACTION_RUNS}</b>  {len(runs)}"
             await query.message.edit_text(text, reply_markup=workflow_actions(repository_id, workflow_id, runs))
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)))
@@ -146,9 +138,7 @@ def register(app, store: GitHubStore, oauth):
             ref = repo.get("default_branch") or "main"
             await service.run_workflow(owner, name, workflow_id, ref)
             await query.message.edit_text(
-                f"<b>{ACTION_RUN_REQUEST}</b>
-
-<code>{escape(workflow.get('name', 'workflow'))}</code> · <code>{escape(ref)}</code>",
+                f"<b>{ACTION_RUN_REQUEST}</b>\n\n<code>{escape(workflow.get('name', 'workflow'))}</code> · <code>{escape(ref)}</code>",
                 reply_markup=workflow_actions(repository_id, workflow_id, []),
             )
         except Exception as exc:
@@ -192,17 +182,13 @@ def register(app, store: GitHubStore, oauth):
             if section == "jobs":
                 items = (await service.jobs(owner, name, run_id)).get("jobs", [])
                 await query.message.edit_text(
-                    f"<b>{ACTION_RUNS}</b> · <code>{run_id}</code>
-
-{ACTION_JOBS_EMPTY if not items else ''}".rstrip(),
+                    f"<b>{ACTION_RUNS}</b> · <code>{run_id}</code>\n\n{ACTION_JOBS_EMPTY if not items else ''}".rstrip(),
                     reply_markup=action_jobs(items, repository_id, run_id),
                 )
             else:
                 items = (await service.run_artifacts(owner, name, run_id)).get("artifacts", [])
                 await query.message.edit_text(
-                    f"<b>{ACTION_ARTIFACTS}</b> · <code>{run_id}</code>
-
-{ACTION_ARTIFACTS_EMPTY if not items else ''}".rstrip(),
+                    f"<b>{ACTION_ARTIFACTS}</b> · <code>{run_id}</code>\n\n{ACTION_ARTIFACTS_EMPTY if not items else ''}".rstrip(),
                     reply_markup=action_artifacts(items, repository_id, run_id),
                 )
         except Exception as exc:
@@ -225,9 +211,7 @@ def register(app, store: GitHubStore, oauth):
             else:
                 await service.rerun(owner, name, run_id, failed_only=action == "rerun_failed")
                 message = ACTION_RERUNNED
-            await query.message.edit_text(f"<b>{message}</b>
-
-<code>{run_id}</code>", reply_markup=action_run_view(repository_id, run_id, "queued", None))
+            await query.message.edit_text(f"<b>{message}</b>\n\n<code>{run_id}</code>", reply_markup=action_run_view(repository_id, run_id, "queued", None))
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)))
 
@@ -275,8 +259,7 @@ def register(app, store: GitHubStore, oauth):
                     number = step.get("number", "")
                     name_text = escape(step.get("name", "step"))
                     lines.append(f"<code>{number}</code> {name_text} · <code>{escape(status)}</code>")
-            await query.message.edit_text("
-".join(lines)[:3900], reply_markup=action_job_view(repository_id, run_id, job_id))
+            await query.message.edit_text("\n".join(lines)[:3900], reply_markup=action_job_view(repository_id, run_id, job_id))
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)))
 
