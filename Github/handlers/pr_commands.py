@@ -32,9 +32,7 @@ def register(app, store: GitHubStore, oauth):
         return service, repo, int(notification["number"])
 
     async def result(message, title, number):
-        await message.reply_text(f"<b>{escape(title)}</b>
-
-<code>#{number}</code>")
+        await message.reply_text(f"<b>{escape(title)}</b>\n\n<code>#{number}</code>")
 
     @app.on_message(filters.command("pr"))
     async def search_pr(client, message):
@@ -71,9 +69,7 @@ def register(app, store: GitHubStore, oauth):
                 if draft:
                     title = title[:-8].rstrip()
                 item = await service.create_pull_request(owner, name, title, head, base, body, draft)
-                await message.reply_text(f"<b>Pull request created.</b>
-
-<code>#{item.get('number')}</code> {escape(item.get('title', title))}")
+                await message.reply_text(f"<b>Pull request created.</b>\n\n<code>#{item.get('number')}</code> {escape(item.get('title', title))}")
             except Exception as exc:
                 await message.reply_text(error_message(str(exc)))
             return
@@ -86,9 +82,7 @@ def register(app, store: GitHubStore, oauth):
             lines = ["<b>Pull requests</b>"]
             for item in items[:20]:
                 repo_name = item.get("repository_url", "").rsplit("/repos/", 1)[-1]
-                lines.append(f"
-<code>#{item.get('number')}</code> {escape(item.get('title', 'Pull request'))[:100]}
-{escape(repo_name)}")
+                lines.append(f"\n<code>#{item.get('number')}</code> {escape(item.get('title', 'Pull request'))[:100]}\n{escape(repo_name)}")
             await message.reply_text("".join(lines) if len(lines) > 1 else "<b>No pull requests found.</b>")
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
@@ -149,13 +143,7 @@ def register(app, store: GitHubStore, oauth):
             if not confirming:
                 mergeable = item.get("mergeable")
                 state = item.get("mergeable_state", "unknown")
-                await message.reply_text(f"<b>Merge pull request</b>
-
-<code>#{number}</code>
-method <code>{method}</code>
-mergeable <code>{escape(str(mergeable))}</code> · <code>{escape(state)}</code>
-
-Reply with /merge {method} confirm to continue.")
+                await message.reply_text(f"<b>Merge pull request</b>\n\n<code>#{number}</code>\nmethod <code>{method}</code>\nmergeable <code>{escape(str(mergeable))}</code> · <code>{escape(state)}</code>\n\nReply with /merge {method} confirm to continue.")
                 return
             head_sha = item.get("head", {}).get("sha")
             merged = await service.merge_pull_request(repo["owner"]["login"], repo["name"], number, method, head_sha)
@@ -193,8 +181,7 @@ Reply with /merge {method} confirm to continue.")
             items = await service.pull_request_files(repo["owner"]["login"], repo["name"], number, per_page=100)
             lines = [f"<b>Files · #{number}</b>"]
             for item in items[:80]:
-                lines.append(f"
-<code>{escape(item.get('status', 'modified'))}</code> {escape(item.get('filename', 'file'))} · +{item.get('additions', 0)} -{item.get('deletions', 0)}")
+                lines.append(f"\n<code>{escape(item.get('status', 'modified'))}</code> {escape(item.get('filename', 'file'))} · +{item.get('additions', 0)} -{item.get('deletions', 0)}")
             await message.reply_text("".join(lines) if len(lines) > 1 else "<b>No changed files.</b>")
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
@@ -237,26 +224,19 @@ Reply with /merge {method} confirm to continue.")
                     reviewer = escape(review.get("user", {}).get("login", "unknown"))
                     state = escape(review.get("state", "PENDING"))
                     body = escape(review.get("body") or "")
-                    lines.append(f"
-<code>{reviewer}</code> · <code>{state}</code>")
+                    lines.append(f"\n<code>{reviewer}</code> · <code>{state}</code>")
                     if body:
-                        lines.append(f"
-{body[:300]}")
+                        lines.append(f"\n{body[:300]}")
             elif action == "mergeable":
-                lines = [f"<b>Mergeable · #{number}</b>", f"
-mergeable <code>{escape(str(item.get('mergeable')))}</code>", f"
-state <code>{escape(item.get('mergeable_state', 'unknown'))}</code>"]
+                lines = [f"<b>Mergeable · #{number}</b>", f"\nmergeable <code>{escape(str(item.get('mergeable')))}</code>", f"\nstate <code>{escape(item.get('mergeable_state', 'unknown'))}</code>"]
             else:
                 sha = item.get("head", {}).get("sha")
                 status = await service.client.request("GET", f"/repos/{owner}/{name}/commits/{sha}/status")
                 checks = await service.client.request("GET", f"/repos/{owner}/{name}/commits/{sha}/check-runs", params={"per_page": 100})
-                lines = [f"<b>Checks · #{number}</b>", f"
-status <code>{escape(status.get('state', 'unknown'))}</code> · {status.get('total_count', 0)}", f"
-check runs {len(checks.get('check_runs', []))}"]
+                lines = [f"<b>Checks · #{number}</b>", f"\nstatus <code>{escape(status.get('state', 'unknown'))}</code> · {status.get('total_count', 0)}", f"\ncheck runs {len(checks.get('check_runs', []))}"]
                 for check in checks.get("check_runs", [])[:20]:
                     conclusion = check.get("conclusion") or check.get("status") or "unknown"
-                    lines.append(f"
-<code>{escape(check.get('name', 'check'))}</code> · {escape(conclusion)}")
+                    lines.append(f"\n<code>{escape(check.get('name', 'check'))}</code> · {escape(conclusion)}")
             await message.reply_text("".join(lines))
         except Exception as exc:
             await message.reply_text(error_message(str(exc)))
