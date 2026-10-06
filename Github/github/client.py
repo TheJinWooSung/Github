@@ -1,16 +1,17 @@
 from typing import Any
 import asyncio
+import os
 import httpx
 
 API = "https://api.github.com"
 API_VERSION = "2026-03-10"
 
 class GitHubClient:
-    def __init__(self, token: str, timeout: float = 30, base_url: str = API, api_version: str = API_VERSION):
+    def __init__(self, token: str, timeout: float | None = None, base_url: str | None = None, api_version: str | None = None):
         self.token = token
-        self.timeout = timeout
-        self.base_url = base_url.rstrip("/")
-        self.api_version = api_version
+        self.timeout = timeout if timeout is not None else float(os.getenv("GITHUB_REQUEST_TIMEOUT", "30"))
+        self.base_url = (base_url or os.getenv("GITHUB_API_URL") or API).rstrip("/")
+        self.api_version = api_version or os.getenv("GITHUB_API_VERSION") or API_VERSION
         self._lock = asyncio.Lock()
 
     def headers(self, extra: dict[str, str] | None = None) -> dict[str, str]:
