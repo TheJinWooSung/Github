@@ -142,7 +142,12 @@ def register(app, store: GitHubStore, sessions: SessionStore, oauth):
                     await query.message.edit_text(PR_ERROR)
                     return
                 await query.message.edit_text(
-                    f"<b>{MERGE_CONFIRM}</b>\n\n<code>#{number}</code>\nmethod <code>squash</code>\n\nUse /merge confirm as a reply to the GitHub notification to complete the merge."
+                    f"<b>{MERGE_CONFIRM}</b>
+
+<code>#{number}</code>
+method <code>squash</code>
+
+Use /merge confirm as a reply to the GitHub notification to complete the merge."
                 )
             elif action == "close":
                 await service.update_pull_request(owner, name, number, state="closed")
