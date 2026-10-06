@@ -40,8 +40,10 @@ def register(app, store: GitHubStore, oauth, webhook_url: str, webhook_secret: s
             return
         lines = [f"<b>{INTEGRATION_LIST}</b>"]
         for item in items:
-            lines.append(f"\n<code>{item['full_name']}</code>")
-        await message.reply_text("\n".join(lines), reply_markup=integrations(items))
+            lines.append(f"
+<code>{item['full_name']}</code>")
+        await message.reply_text("
+".join(lines), reply_markup=integrations(items))
 
     @app.on_message(filters.command("delintegration"))
     async def delete_integration(client, message):
