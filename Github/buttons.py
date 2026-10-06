@@ -36,6 +36,7 @@ ERROR = "Something went wrong"
 EDIT_FILE = "Edit file"
 EDIT_INSTRUCTION = "Send the complete new file content as your next message."
 COMMIT_INSTRUCTION = "Send the commit message for this change."
+COMMIT_MESSAGE_PROMPT = "Send the commit message."
 SESSION_EXPIRED = "Edit session expired"
 COMMIT_SESSION_EXPIRED = "Commit session expired"
 COMMIT_CANCELLED = "Commit cancelled"
@@ -45,6 +46,7 @@ STAGE_FILE = "Stage file"
 COMMIT_STAGED = "Commit staged"
 CLEAR_STAGED = "Clear staged"
 STAGED_EMPTY = "No staged changes."
+STAGED_CLEARED = "Staged changes cleared."
 STAGED_COUNT = "files staged"
 UNCHANGED_FILE = "No changes were made to the file."
 INVALID_COMMIT_MESSAGE = "Commit message is required."
@@ -249,7 +251,7 @@ def files(items, browser_token: str, parent_token: str | None = None):
     return InlineKeyboardMarkup(rows)
 
 def file_view(repository_id: int, edit_token: str, browser_token: str, webapp_url: str | None = None, path: str | None = None, branch: str | None = None):
-    rows = [_row(("Edit", f"edit:{edit_token}"))]
+    rows = [_row((EDIT, f"edit:{edit_token}"))]
     if webapp_url and path is not None and branch is not None:
         from urllib.parse import urlencode
         url = webapp_url.rstrip("/") + "/webapp/editor?" + urlencode({"repo": repository_id, "path": path, "branch": branch})
