@@ -162,12 +162,7 @@ def integration_deliveries(items, repository_id: int):
     return InlineKeyboardMarkup(rows)
 
 def integration_delivery_text(item: dict):
-    return f"<b>Webhook delivery</b>
-
-<code>{escape(str(item.get('delivery_id', '')))}</code>
-{escape(item.get('event', 'event'))} · <code>{escape(item.get('status', 'unknown'))}</code>" + (f"
-
-{escape(item.get('error', ''))}" if item.get("error") else "")
+    return f"<b>Webhook delivery</b>\n\n<code>{escape(str(item.get('delivery_id', '')))}</code>\n{escape(item.get('event', 'event'))} · <code>{escape(item.get('status', 'unknown'))}</code>" + (f"\n\n{escape(item.get('error', ''))}" if item.get("error") else "")
 
 def integration_delivery_actions(repository_id: int, delivery_id: str, failed: bool):
     rows = []
@@ -179,17 +174,10 @@ def integration_delivery_actions(repository_id: int, delivery_id: str, failed: b
 def integration_events_text(full_name: str, events: list[str], active: bool):
     selected = ", ".join(events) if events else "none"
     state = INTEGRATION_ON if active else INTEGRATION_OFF
-    return f"<b>{INTEGRATION_EVENTS}</b>
-
-<code>{escape(full_name)}</code>
-{INTEGRATION_ACTIVE}: <b>{state}</b>
-
-<code>{escape(selected)}</code>"
+    return f"<b>{INTEGRATION_EVENTS}</b>\n\n<code>{escape(full_name)}</code>\n{INTEGRATION_ACTIVE}: <b>{state}</b>\n\n<code>{escape(selected)}</code>"
 
 def connect_text():
-    return f"<b>{CONNECT}</b>
-
-{CONNECT_HINT}"
+    return f"<b>{CONNECT}</b>\n\n{CONNECT_HINT}"
 
 def repository(repository_id: int):
     return InlineKeyboardMarkup([_row((FILES, f"repo:{repository_id}:files"), (COMMITS, f"repo:{repository_id}:commits")), _row((BRANCHES, f"repo:{repository_id}:branches"), (TAGS, f"repo:{repository_id}:tags")), _row((PULL_REQUESTS, f"repo:{repository_id}:pulls"), (ISSUES, f"repo:{repository_id}:issues")), _row((ACTIONS, f"repo:{repository_id}:actions"), (RELEASES, f"repo:{repository_id}:releases")), _row((CONTRIBUTORS, f"repo:{repository_id}:contributors"), (DEPLOYMENTS, f"repo:{repository_id}:deployments")), _row((HOME, "nav:home"))])
@@ -219,9 +207,7 @@ def repositories(items):
     return InlineKeyboardMarkup(rows)
 
 def start_text():
-    return f"<b>{START}</b>
-
-{START_HINT}"
+    return f"<b>{START}</b>\n\n{START_HINT}"
 
 def repository_list(items):
     if not items:
@@ -230,36 +216,18 @@ def repository_list(items):
     for item in items[:20]:
         name = escape(item.get("full_name", item.get("name", "repository")))
         private = " · private" if item.get("private") else ""
-        lines.append(f"
-<code>{name}</code>{private}")
+        lines.append(f"\n<code>{name}</code>{private}")
     return "".join(lines)
 
 def repo_home(owner: str, name: str, branch: str, description: str | None = None):
-    body = f"<b>{escape(owner)}/{escape(name)}</b>
-
-{BRANCH}  <code>{escape(branch)}</code>"
-    return f"{body}
-
-{escape(description)}" if description else body
+    body = f"<b>{escape(owner)}/{escape(name)}</b>\n\n{BRANCH}  <code>{escape(branch)}</code>"
+    return f"{body}\n\n{escape(description)}" if description else body
 
 def error_message(message: str | None = None):
-    return f"<b>{ERROR}</b>
-
-<code>{escape(message)}</code>" if message else f"<b>{ERROR}</b>"
+    return f"<b>{ERROR}</b>\n\n<code>{escape(message)}</code>" if message else f"<b>{ERROR}</b>"
 
 def commit_preview(data: CommitView):
-    return f"<b>{REVIEW_CHANGES}</b>
-
-<code>{escape(data.repository)}</code> · <code>{escape(data.branch)}</code>
-
-{FILES}  <b>{data.files}</b>
-{ADDED}  <b>+{data.additions}</b>
-{REMOVED}  <b>-{data.deletions}</b>
-
-<b>{COMMIT_MESSAGE}</b>
-<code>{escape(data.message)}</code>
-
-{CONFIRM_COMMIT}"
+    return f"<b>{REVIEW_CHANGES}</b>\n\n<code>{escape(data.repository)}</code> · <code>{escape(data.branch)}</code>\n\n{FILES}  <b>{data.files}</b>\n{ADDED}  <b>+{data.additions}</b>\n{REMOVED}  <b>-{data.deletions}</b>\n\n<b>{COMMIT_MESSAGE}</b>\n<code>{escape(data.message)}</code>\n\n{CONFIRM_COMMIT}"
 
 def files(items, browser_token: str, parent_token: str | None = None):
     rows = []
@@ -281,48 +249,27 @@ def file_view(repository_id: int, edit_token: str, browser_token: str, webapp_ur
 
 def files_text(owner: str, name: str, branch: str, path: str, items):
     title = f"<b>{escape(owner)}/{escape(name)}</b>  <code>{escape(branch)}</code>"
-    location = f"
-
-<code>/{escape(path)}</code>" if path else ""
+    location = f"\n\n<code>/{escape(path)}</code>" if path else ""
     if not items:
-        return title + location + "
-
-" + EMPTY
+        return title + location + "\n\n" + EMPTY
     lines = [title + location]
     for item in items[:20]:
         marker = "DIR" if item.get("type") == "dir" else "FILE"
-        lines.append(f"
-{marker}  <code>{escape(item.get('name', 'item'))}</code>")
+        lines.append(f"\n{marker}  <code>{escape(item.get('name', 'item'))}</code>")
     return "".join(lines)
 
 def edit_prompt(path: str):
-    return f"<b>{EDIT_FILE}</b>
-
-<code>{escape(path)}</code>
-
-{EDIT_INSTRUCTION}"
+    return f"<b>{EDIT_FILE}</b>\n\n<code>{escape(path)}</code>\n\n{EDIT_INSTRUCTION}"
 
 def commit_prompt():
-    return f"<b>{COMMIT_MESSAGE}</b>
-
-{COMMIT_INSTRUCTION}"
+    return f"<b>{COMMIT_MESSAGE}</b>\n\n{COMMIT_INSTRUCTION}"
 
 def commit_result(sha: str, path: str, message: str):
-    return f"<b>{COMMIT_CREATED}</b>
-
-<code>{escape(sha[:12])}</code>
-<code>{escape(path)}</code>
-
-{escape(message)}"
+    return f"<b>{COMMIT_CREATED}</b>\n\n<code>{escape(sha[:12])}</code>\n<code>{escape(path)}</code>\n\n{escape(message)}"
 
 def file_text(owner: str, name: str, path: str, content: str, branch: str):
     body = content[:3500]
-    return f"<b>{escape(owner)}/{escape(name)}</b>
-
-<code>{escape(path)}</code>
-<code>{escape(branch)}</code>
-
-<pre>{escape(body)}</pre>"
+    return f"<b>{escape(owner)}/{escape(name)}</b>\n\n<code>{escape(path)}</code>\n<code>{escape(branch)}</code>\n\n<pre>{escape(body)}</pre>"
 
 
 def pull_requests(items, repository_id: int, state: str = "open"):
@@ -371,56 +318,42 @@ def pull_request_text(item: dict):
         stats.append(f"-{item['deletions']}")
     if stats:
         lines.extend(["", " · ".join(stats)])
-    return "
-".join(lines)
+    return "\n".join(lines)
 
 def pull_request_files_text(items):
     if not items:
-        return f"<b>{PR_FILES}</b>
-
-{EMPTY}"
+        return f"<b>{PR_FILES}</b>\n\n{EMPTY}"
     lines = [f"<b>{PR_FILES}</b>"]
     for item in items[:30]:
-        lines.append(f"
-<code>{escape(item.get('filename', 'file'))}</code> · +{item.get('additions', 0)} -{item.get('deletions', 0)}")
+        lines.append(f"\n<code>{escape(item.get('filename', 'file'))}</code> · +{item.get('additions', 0)} -{item.get('deletions', 0)}")
     return "".join(lines)
 
 def pull_request_commits_text(items):
     if not items:
-        return f"<b>{PR_COMMITS}</b>
-
-{EMPTY}"
+        return f"<b>{PR_COMMITS}</b>\n\n{EMPTY}"
     lines = [f"<b>{PR_COMMITS}</b>"]
     for item in items[:30]:
         sha = escape(item.get("sha", "")[:10])
-        message = escape((item.get("commit", {}).get("message") or "commit").split("
-", 1)[0])
-        lines.append(f"
-<code>{sha}</code> {message[:100]}")
+        message = escape((item.get("commit", {}).get("message") or "commit").split("\n", 1)[0])
+        lines.append(f"\n<code>{sha}</code> {message[:100]}")
     return "".join(lines)
 
 def pull_request_reviews_text(items):
     if not items:
-        return f"<b>{PR_REVIEWS}</b>
-
-{EMPTY}"
+        return f"<b>{PR_REVIEWS}</b>\n\n{EMPTY}"
     lines = [f"<b>{PR_REVIEWS}</b>"]
     for item in items[-30:]:
         user = escape(item.get("user", {}).get("login", "unknown"))
         state = escape(item.get("state", "PENDING"))
         body = escape(item.get("body") or "")
-        lines.append(f"
-<b>{user}</b> · <code>{state}</code>")
+        lines.append(f"\n<b>{user}</b> · <code>{state}</code>")
         if body:
-            lines.append(f"
-{body[:500]}")
+            lines.append(f"\n{body[:500]}")
     return "".join(lines)
 
 
 def pull_request_list_text(repository: str):
-    return f"<b>{escape(repository)}</b>
-
-{PR_LIST}"
+    return f"<b>{escape(repository)}</b>\n\n{PR_LIST}"
 
 
 def actions_home(repository_id: int):
@@ -489,15 +422,10 @@ def action_artifacts(items, repository_id: int, run_id: int | None = None):
     return InlineKeyboardMarkup(rows)
 
 def actions_text(repository: str):
-    return f"<b>{escape(repository)}</b>
-
-{ACTIONS_TITLE}"
+    return f"<b>{escape(repository)}</b>\n\n{ACTIONS_TITLE}"
 
 def workflow_text(item: dict):
-    return f"<b>{escape(item.get('name', 'Workflow'))}</b>
-
-<code>{escape(item.get('state', 'unknown'))}</code>
-<code>{escape(item.get('path', ''))}</code>"
+    return f"<b>{escape(item.get('name', 'Workflow'))}</b>\n\n<code>{escape(item.get('state', 'unknown'))}</code>\n<code>{escape(item.get('path', ''))}</code>"
 
 def workflow_actions(repository_id: int, workflow_id: int, runs, include_run: bool = True):
     rows = []
@@ -517,31 +445,21 @@ def run_text(item: dict):
     branch = escape(item.get('head_branch') or '-')
     actor = escape(item.get('actor', {}).get('login', 'unknown'))
     sha = escape(item.get('head_sha', '')[:10])
-    return f"<b>{name}</b>
-
-<code>{status}</code> · <code>{branch}</code>
-by <code>{actor}</code>
-<code>{sha}</code>"
+    return f"<b>{name}</b>\n\n<code>{status}</code> · <code>{branch}</code>\nby <code>{actor}</code>\n<code>{sha}</code>"
 
 def job_text(item: dict):
     name = escape(item.get('name', 'Job'))
     status = escape(item.get('conclusion') or item.get('status', 'unknown'))
-    return f"<b>{name}</b>
-
-<code>{status}</code>"
+    return f"<b>{name}</b>\n\n<code>{status}</code>"
 
 def artifact_text(item: dict):
     name = escape(item.get('name', 'Artifact'))
     size = item.get('size_in_bytes', 0)
     expired = "expired" if item.get('expired') else "available"
-    return f"<b>{name}</b>
-
-<code>{size} bytes</code> · {expired}"
+    return f"<b>{name}</b>\n\n<code>{size} bytes</code> · {expired}"
 
 def action_logs_text(name: str, content: str):
-    return f"<b>{escape(name)}</b>
-
-<pre>{escape(content[-3500:])}</pre>"
+    return f"<b>{escape(name)}</b>\n\n<pre>{escape(content[-3500:])}</pre>"
 
 
 def stage_actions(token: str):
@@ -550,14 +468,12 @@ def stage_actions(token: str):
 def staged_text(repository: str, branch: str, changes):
     lines = [f"<b>{escape(repository)}</b> · <code>{escape(branch)}</code>", "", f"<b>{STAGED}</b>"]
     if not changes:
-        return "
-".join(lines + [STAGED_EMPTY])
+        return "\n".join(lines + [STAGED_EMPTY])
     for change in changes[:50]:
         marker = {"added": "+", "modified": "~", "deleted": "-"}.get(change.status, "~")
         lines.append(f"<code>{marker}</code> {escape(change.path)}")
     lines.extend(["", f"<b>{len(changes)}</b> {STAGED_COUNT}", "", f"<b>{COMMIT_STAGED}</b>"])
-    return "
-".join(lines)
+    return "\n".join(lines)
 
 
 DIFF_TITLE = "Changes"
@@ -576,25 +492,15 @@ def pull_request_diff_text(item: dict, index: int, total: int):
     additions = item.get("additions", 0)
     deletions = item.get("deletions", 0)
     patch = item.get("patch")
-    header = f"<b>{DIFF_TITLE} · {index + 1}/{total}</b>
-
-<code>{filename}</code>
-{status} · +{additions} -{deletions}"
+    header = f"<b>{DIFF_TITLE} · {index + 1}/{total}</b>\n\n<code>{filename}</code>\n{status} · +{additions} -{deletions}"
     if item.get("previous_filename"):
-        header += f"
-from <code>{escape(item['previous_filename'])}</code>"
+        header += f"\nfrom <code>{escape(item['previous_filename'])}</code>"
     if item.get("binary"):
-        return header + f"
-
-{DIFF_BINARY}"
+        return header + f"\n\n{DIFF_BINARY}"
     if not patch:
-        return header + f"
-
-{DIFF_NO_PATCH}"
+        return header + f"\n\n{DIFF_NO_PATCH}"
     body = escape(patch[-3000:])
-    return header + f"
-
-<pre>{body}</pre>"
+    return header + f"\n\n<pre>{body}</pre>"
 
 def pull_request_diff_actions(repository_id: int, number: int, index: int, total: int):
     row = []
