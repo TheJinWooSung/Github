@@ -61,12 +61,14 @@ def validate_webapp_init_data(init_data: str, bot_token: str, max_age: int = 864
 
 def build_web(bot, oauth, sessions, store):
     app = FastAPI(title="GitHub Telegram Control Center")
+    oauth_callback_path = bot.config.oauth_callback_path
+    webhook_path = bot.config.webhook_path
 
     @app.get("/health")
     async def health():
         return {"status": "ok"}
 
-    @app.get("/oauth/callback", response_class=HTMLResponse)
+    @app.get(oauth_callback_path, response_class=HTMLResponse)
     async def oauth_callback(code: str | None = None, state: str | None = None, error: str | None = None):
         if error:
             return HTMLResponse("<h2>GitHub authorization cancelled.</h2>", status_code=400)
@@ -136,7 +138,7 @@ def build_web(bot, oauth, sessions, store):
         result = await CommitEngine(service).execute(plan, expected_head=current)
         return {"sha": result["new_sha"], "repository": linked["full_name"], "path": path, "branch": branch}
 
-    @app.post("/webhooks/github")
+    @app.post(webhook_path)
     async def github_webhook(request: Request, x_hub_signature_256: str | None = Header(default=None), x_github_event: str | None = Header(default=None), x_github_delivery: str | None = Header(default=None)):
         body = await request.body()
         verify_signature(body, bot.config.github_webhook_secret, x_hub_signature_256)
