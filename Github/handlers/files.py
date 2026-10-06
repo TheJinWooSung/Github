@@ -1,7 +1,7 @@
 import base64
 import difflib
 from pyrogram import filters
-from ..buttons import back, files, file_view, files_text, file_text, error_message, edit_prompt, commit_prompt, commit_result, stage_actions, staged_text, SESSION_EXPIRED, COMMIT_SESSION_EXPIRED, COMMIT_CANCELLED, STAGED_CLEARED, COMMIT_MESSAGE_PROMPT, UNCHANGED_FILE, INVALID_COMMIT_MESSAGE
+from ..buttons import back, files, file_view, files_text, file_text, error_message, edit_prompt, commit_prompt, commit_result, stage_actions, staged_text, SESSION_EXPIRED, COMMIT_SESSION_EXPIRED, STAGED_CLEARED, STAGED_BRANCH_CHANGED, COMMIT_MESSAGE_PROMPT, UNCHANGED_FILE, INVALID_COMMIT_MESSAGE
 from ..state import EditSession, BrowserSession, SessionStore, CommitStageSession, StagedChange
 from ..github.commit import CommitEngine, CommitPlan, FileChange
 
@@ -109,26 +109,18 @@ def register(app, service, sessions: SessionStore, webapp_url: str | None = None
             existing_token = await sessions.stage(message.from_user.id)
             stage = await sessions.get(existing_token) if existing_token else None
             if not isinstance(stage, CommitStageSession) or stage.chat_id != message.chat.id or stage.repository_id != session.repository_id or stage.branch != session.branch:
-                stage = CommitStageSession(message.from_user.id, message.chat.id, session.repository_id, session.owner, session.name, session.branch, [])
+                stage = CommitStageSession(message.from_user.id, message.chat.id, session.repository_id, session.owner, session.name, session.branch, [], session.base_head)
                 existing_token = await sessions.create_stage(stage)
+            elif stage.base_head and session.base_head and stage.base_head != session.base_head:
+                await message.reply_text(error_message(STAGED_BRANCH_CHANGED), reply_markup=stage_actions(existing_token))
+                return
+            elif not stage.base_head:
+                stage.base_head = session.base_head
             stage.changes = [item for item in stage.changes if item.path != session.path]
             stage.changes.append(StagedChange(session.path, "modified", session.content, additions, deletions))
             await sessions.set(existing_token, stage)
             await sessions.delete(token)
             await message.reply_text(staged_text(f"{stage.owner}/{stage.name}", stage.branch, stage.changes), reply_markup=stage_actions(existing_token))
-            return
-
-    @app.on_callback_query(filters.regex(r"^commit:"))
-    async def handle_commit(client, query):
-        await query.answer()
-        _, token, action = query.data.split(":", 2)
-        session = await sessions.get(token)
-        if not isinstance(session, EditSession) or session.user_id != query.from_user.id:
-            await query.message.edit_text(error_message(COMMIT_SESSION_EXPIRED), reply_markup=back())
-            return
-        if action == "cancel":
-            await sessions.delete(token)
-            await query.message.edit_text(f"<b>{COMMIT_CANCELLED}</b>", reply_markup=back(f"browse:{session.browser_token}:back"))
             return
 
     @app.on_callback_query(filters.regex(r"^stage:"))
@@ -167,10 +159,10 @@ def register(app, service, sessions: SessionStore, webapp_url: str | None = None
         plan = CommitPlan(f"{stage.owner}/{stage.name}", stage.branch, text_value, [FileChange(x.path, x.status, x.content, x.additions, x.deletions) for x in stage.changes])
         try:
             engine = CommitEngine(service)
-            result = await engine.execute(plan)
+            result = await engine.execute(plan, expected_head=stage.base_head)
             await sessions.delete(token)
             await message.reply_text(commit_result(result["new_sha"], f"{len(stage.changes)} files", text_value), reply_markup=back("nav:back"))
         except Exception as exc:
             await message.reply_text(error_message(str(exc)), reply_markup=stage_actions(token))
 
-    return handle_file, handle_browse, handle_edit, handle_commit
+    return handle_file, handle_browse, handle_edit
