@@ -32,12 +32,16 @@ class CommitPlan:
             raise ValueError("Commit message is required")
         if not self.changes:
             raise ValueError("At least one file change is required")
+        owner, separator, name = self.repository.partition("/")
+        if not separator or not owner.strip() or not name.strip() or "/" in name:
+            raise ValueError("Repository must be in owner/name format")
         seen = set()
         for change in self.changes:
-            path = change.path.strip().strip("/")
+            raw_path = change.path.strip()
+            path = raw_path.strip("/")
             if not path or path in seen:
                 raise ValueError("Every changed path must be unique")
-            if "\x00" in path:
+            if "\\x00" in path or "\\\\" in path or any(part in {".", ".."} for part in path.split("/")):
                 raise ValueError("Invalid file path")
             seen.add(path)
             if change.status not in {"added", "modified", "deleted"}:
