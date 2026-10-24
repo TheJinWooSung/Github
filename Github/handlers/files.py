@@ -33,7 +33,18 @@ def register(app, service, sessions: SessionStore, webapp_url: str | None = None
                 await query.message.edit_text(error_message(SESSION_EXPIRED), reply_markup=back())
                 return
             items = await service.contents(browser.owner, browser.name, browser.path, browser.branch)
-            item = items[int(index)]
+            try:
+                item_index = int(index)
+            except (TypeError, ValueError):
+                await query.message.edit_text(error_message("Invalid file selection."), reply_markup=back())
+                return
+            if item_index < 0 or item_index >= len(items):
+                await query.message.edit_text(
+                    error_message("This file list is out of date. Reopen the directory and try again."),
+                    reply_markup=back(f"browse:{browser_token}:back"),
+                )
+                return
+            item = items[item_index]
             if item.get("type") == "dir":
                 children = await service.contents(browser.owner, browser.name, item["path"], browser.branch)
                 child = BrowserSession(query.from_user.id, query.message.chat.id, browser.repository_id, browser.owner, browser.name, browser.branch, item["path"], browser_token)
