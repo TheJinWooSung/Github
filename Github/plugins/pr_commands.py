@@ -4,7 +4,7 @@ from pyrogram import filters
 from ..buttons import error_message
 from ..github.client import GitHubClient
 from ..github.repositories import RepositoryService
-from ..storage import GitHubStore
+from ..database.store import GitHubStore
 
 AUTH_REQUIRED = "Connect GitHub first with /connect."
 REPLY_REQUIRED = "Reply to a pull request notification."

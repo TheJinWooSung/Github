@@ -4,7 +4,7 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from ..buttons import AUTHORIZE_GITHUB, connect_text
 from ..github.oauth import GitHubOAuth
 from ..state import OAuthState, SessionStore
-from ..storage import GitHubStore
+from ..database.store import GitHubStore
 
 def register(app, oauth: GitHubOAuth, sessions: SessionStore, store: GitHubStore):
     @app.on_message(filters.command("connect"))

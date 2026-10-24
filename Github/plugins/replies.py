@@ -2,7 +2,7 @@ from pyrogram import filters
 from ..buttons import NOT_CONNECTED, error_message
 from ..github.client import GitHubClient
 from ..github.repositories import RepositoryService
-from ..storage import GitHubStore
+from ..database.store import GitHubStore
 
 def register(app, store: GitHubStore, oauth):
     @app.on_message(filters.reply & filters.text)

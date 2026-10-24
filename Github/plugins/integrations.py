@@ -2,7 +2,7 @@ from pyrogram import filters
 from ..buttons import NOT_CONNECTED, INTEGRATION_USAGE, INTEGRATION_ADDED, INTEGRATION_EXISTS, INTEGRATION_REMOVED, INTEGRATION_NOT_FOUND, INTEGRATIONS_EMPTY, INTEGRATION_LIST, INTEGRATION_EVENTS, WEBHOOK_EVENTS, error_message, integrations, integration_events, integration_events_text, integration_deliveries, integration_delivery_text, integration_delivery_actions, DELIVERY_LIST
 from ..github.client import GitHubClient
 from ..github.repositories import RepositoryService
-from ..storage import GitHubStore
+from ..database.store import GitHubStore
 
 def register(app, store: GitHubStore, oauth, webhook_url: str, webhook_secret: str):
     @app.on_message(filters.command("newintegration"))

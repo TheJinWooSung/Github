@@ -5,20 +5,20 @@ from .github.auth import GitHubAppAuth
 from .github.client import GitHubClient
 from .github.oauth import GitHubOAuth
 from .github.repositories import RepositoryService
-from .handlers.start import register as register_start
-from .handlers.repos import register as register_repositories
-from .handlers.files import register as register_files
-from .handlers.oauth import register as register_oauth
-from .handlers.integrations import register as register_integrations
-from .handlers.pulls import register as register_pulls
-from .handlers.pr_commands import register as register_pr_commands
-from .handlers.replies import register as register_replies
-from .handlers.actions import register as register_actions
-from .handlers.action_commands import register as register_action_commands
-from .handlers.discussions import register as register_discussions
-from .handlers.commands import register as register_commands
+from .plugins.start import register as register_start
+from .plugins.repos import register as register_repositories
+from .plugins.files import register as register_files
+from .plugins.oauth import register as register_oauth
+from .plugins.integrations import register as register_integrations
+from .plugins.pulls import register as register_pulls
+from .plugins.pr_commands import register as register_pr_commands
+from .plugins.replies import register as register_replies
+from .plugins.actions import register as register_actions
+from .plugins.action_commands import register as register_action_commands
+from .plugins.discussions import register as register_discussions
+from .plugins.commands import register as register_commands
 from .state import SessionStore
-from .storage import GitHubStore
+from .database.store import GitHubStore
 from .web import build_web
 
 class GitHubBot:

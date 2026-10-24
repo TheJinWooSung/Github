@@ -36,7 +36,7 @@ from ..buttons import (
 )
 from ..github.client import GitHubClient
 from ..github.repositories import RepositoryService
-from ..storage import GitHubStore
+from ..database.store import GitHubStore
 
 def register(app, store: GitHubStore, oauth):
     async def service_for(user_id: int):

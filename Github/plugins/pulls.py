@@ -3,7 +3,7 @@ from ..buttons import NOT_CONNECTED, PR_ERROR, PR_REVIEWED, PR_MERGED, PR_CLOSED
 from ..github.client import GitHubClient
 from ..github.repositories import RepositoryService
 from ..state import ReviewSession, SessionStore
-from ..storage import GitHubStore
+from ..database.store import GitHubStore
 
 def register(app, store: GitHubStore, sessions: SessionStore, oauth):
     async def service_for(user_id: int):
