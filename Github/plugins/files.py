@@ -161,6 +161,9 @@ def register(app, service, sessions: SessionStore, webapp_url: str | None = None
         if not isinstance(stage, CommitStageSession) or stage.user_id != query.from_user.id or stage.chat_id != query.message.chat.id:
             await query.message.edit_text(error_message(COMMIT_SESSION_EXPIRED), reply_markup=back())
             return
+        if stage.status == "committing":
+            await query.answer("A commit is already in progress.", show_alert=True)
+            return
         if action == "clear":
             await sessions.delete(token)
             await query.message.edit_text(f"<b>{STAGED_CLEARED}</b>", reply_markup=back("nav:back"))
@@ -177,6 +180,8 @@ def register(app, service, sessions: SessionStore, webapp_url: str | None = None
                 return
             try:
                 plan = CommitPlan(f"{stage.owner}/{stage.name}", stage.branch, stage.message, [FileChange(x.path, x.status, x.content, x.additions, x.deletions) for x in stage.changes])
+                stage.status = "committing"
+                await sessions.set(token, stage)
                 await query.message.edit_text("<b>Creating commit…</b>")
                 result = await CommitEngine(service).execute(plan, expected_head=stage.base_head)
                 await sessions.delete(token)
