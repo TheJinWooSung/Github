@@ -295,9 +295,9 @@ def file_view(repository_id: int, edit_token: str, browser_token: str, webapp_ur
 def files_text(owner: str, name: str, branch: str, path: str, items, page: int = 0):
     title = f"<b>{escape(owner)}/{escape(name)}</b>"
     branch_line = f"<b>{BRANCH}</b>  <code>{escape(branch)}</code>"
-    location = f"\\n\\n<b>Path</b>  <code>/{escape(path)}</code>" if path else "\\n\\n<b>Path</b>  <code>/</code>"
+    location = f"\n\n<b>Path</b>  <code>/{escape(path)}</code>" if path else "\n\n<b>Path</b>  <code>/</code>"
     if not items:
-        return f"{title}\\n{branch_line}{location}\\n\\n{EMPTY}"
+        return f"{title}\n{branch_line}{location}\n\n{EMPTY}"
     page = max(0, page)
     start = page * 20
     visible = items[start:start + 20]
@@ -305,11 +305,11 @@ def files_text(owner: str, name: str, branch: str, path: str, items, page: int =
     for item in visible:
         item_name = escape(item.get("name", "item"))
         if item.get("type") == "dir":
-            lines.append(f"\\n<b>DIR</b>  <code>{item_name}/</code>")
+            lines.append(f"\n<b>DIR</b>  <code>{item_name}/</code>")
         else:
-            lines.append(f"\\n<code>{item_name}</code>")
+            lines.append(f"\n<code>{item_name}</code>")
     if len(items) > 20:
-        lines.append(f"\\n\\nPage {page + 1} · showing {start + 1}–{min(start + 20, len(items))} of {len(items)} items.")
+        lines.append(f"\n\nPage {page + 1} · showing {start + 1}–{min(start + 20, len(items))} of {len(items)} items.")
     return "".join(lines)
 
 
