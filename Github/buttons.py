@@ -542,7 +542,7 @@ def stage_diff_actions(token: str, index: int, total: int):
     if index + 1 < total:
         row.append(InlineKeyboardButton(DIFF_NEXT, callback_data=f"stage:{token}:diff:{index + 1}"))
     rows = [row] if row else []
-    rows.append(_row((DIFF_BACK, f"stage:{token}:review")))
+    rows.append(_row((BACK, f"stage:{token}:review")) )
     return InlineKeyboardMarkup(rows)
 
 def staged_diff_text(change, index: int, total: int):
