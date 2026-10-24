@@ -48,6 +48,25 @@ def register(app, service, sessions: SessionStore, webapp_url: str | None = None
         except Exception as exc:
             await query.message.edit_text(error_message(str(exc)), reply_markup=back())
 
+    @app.on_callback_query(filters.regex(r"^filepage:"))
+    async def handle_file_page(client, query):
+        await query.answer()
+        try:
+            _, token, page_value = query.data.split(":", 2)
+            browser = await sessions.get(token)
+            if not isinstance(browser, BrowserSession) or browser.user_id != query.from_user.id or browser.chat_id != query.message.chat.id:
+                await query.message.edit_text(error_message(SESSION_EXPIRED), reply_markup=back())
+                return
+            items = await service.contents(browser.owner, browser.name, browser.path, browser.branch)
+            page = max(0, int(page_value))
+            page = min(page, max(0, (len(items) - 1) // 20))
+            await query.message.edit_text(
+                files_text(browser.owner, browser.name, browser.branch, browser.path, items, page),
+                reply_markup=files(items, token, browser.parent_token, page),
+            )
+        except Exception as exc:
+            await query.message.edit_text(error_message(str(exc)), reply_markup=back())
+
     @app.on_callback_query(filters.regex(r"^browse:"))
     async def handle_browse(client, query):
         await query.answer()
