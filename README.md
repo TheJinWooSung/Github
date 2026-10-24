@@ -50,7 +50,7 @@ The interface is designed around short actions and focused repository screens ra
 | Replies | Post supported GitHub comments from Telegram |
 | Authentication | OAuth with PKCE and encrypted token storage |
 | Sessions | Redis-backed temporary editing and review state |
-| Web service | Health checks, OAuth callback and webhook receiver |
+| Web service | `Github/web/app.py` — health checks, OAuth callback, WebApp editor and webhook receiver |
 
 ## Telegram workflow
 
@@ -228,7 +228,7 @@ Github/
 │   ├── oauth.py
 │   └── repositories.py
 │
-├── handlers/
+├── plugins/
 │   ├── actions.py
 │   ├── action_commands.py
 │   ├── files.py
@@ -244,8 +244,11 @@ Github/
 ├── buttons.py
 ├── config.py
 ├── state.py
-├── storage.py
-└── web.py
+├── database/
+│   └── store.py
+└── web/
+    ├── __init__.py
+    └── app.py
 ~~~
 
 ## Authentication

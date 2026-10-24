@@ -151,8 +151,8 @@ load();
         if not linked: raise HTTPException(status_code=403, detail="Repository is not connected")
         token = await store.token(telegram_id, oauth)
         if not token: raise HTTPException(status_code=401, detail="Connect GitHub first")
-        from .github.client import GitHubClient
-        from .github.repositories import RepositoryService
+        from ..github.client import GitHubClient
+        from ..github.repositories import RepositoryService
         service = RepositoryService(GitHubClient(token, timeout=bot.config.request_timeout, base_url=bot.config.github_api_url, api_version=bot.config.github_api_version))
         data = await service.file(linked["owner"], linked["name"], path, branch)
         if data.get("type") != "file": raise HTTPException(status_code=400, detail="Requested path is not a file")
@@ -172,9 +172,9 @@ load();
         if not linked: raise HTTPException(status_code=403, detail="Repository is not connected")
         token = await store.token(telegram_id, oauth)
         if not token: raise HTTPException(status_code=401, detail="Connect GitHub first")
-        from .github.client import GitHubClient
-        from .github.repositories import RepositoryService
-        from .github.commit import CommitEngine, CommitPlan, FileChange
+        from ..github.client import GitHubClient
+        from ..github.repositories import RepositoryService
+        from ..github.commit import CommitEngine, CommitPlan, FileChange
         service = RepositoryService(GitHubClient(token, timeout=bot.config.request_timeout, base_url=bot.config.github_api_url, api_version=bot.config.github_api_version))
         current = await service.branch_head(linked["owner"], linked["name"], branch)
         old = await service.file(linked["owner"], linked["name"], path, branch)

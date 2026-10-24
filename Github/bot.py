@@ -19,7 +19,7 @@ from .plugins.discussions import register as register_discussions
 from .plugins.commands import register as register_commands
 from .state import SessionStore
 from .database.store import GitHubStore
-from .web import build_web
+from .web.app import build_web
 
 class GitHubBot:
     def __init__(self, config: Config):
