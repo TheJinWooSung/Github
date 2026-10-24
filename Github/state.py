@@ -46,6 +46,7 @@ class CommitStageSession:
     branch: str
     changes: list[StagedChange]
     base_head: str | None = None
+    message: str | None = None
     status: str = "ready"
     expires_at: float = 0.0
 

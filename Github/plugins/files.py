@@ -1,7 +1,7 @@
 import base64
 import difflib
 from pyrogram import filters
-from ..buttons import back, files, file_view, files_text, file_text, error_message, edit_prompt, commit_prompt, commit_result, stage_actions, staged_text, SESSION_EXPIRED, COMMIT_SESSION_EXPIRED, STAGED_CLEARED, STAGED_BRANCH_CHANGED, COMMIT_MESSAGE_PROMPT, UNCHANGED_FILE, INVALID_COMMIT_MESSAGE
+from ..buttons import back, files, file_view, files_text, file_text, error_message, edit_prompt, commit_prompt, commit_result, stage_actions, stage_confirmation_actions, staged_text, SESSION_EXPIRED, COMMIT_SESSION_EXPIRED, STAGED_CLEARED, STAGED_BRANCH_CHANGED, COMMIT_MESSAGE_PROMPT, UNCHANGED_FILE, INVALID_COMMIT_MESSAGE, CONFIRM_COMMIT, COMMIT_CANCELLED
 from ..state import EditSession, BrowserSession, SessionStore, CommitStageSession, StagedChange
 from ..github.commit import CommitEngine, CommitPlan, FileChange
 
@@ -165,34 +165,54 @@ def register(app, service, sessions: SessionStore, webapp_url: str | None = None
             await sessions.delete(token)
             await query.message.edit_text(f"<b>{STAGED_CLEARED}</b>", reply_markup=back("nav:back"))
             return
+        if action == "cancel-confirm":
+            stage.status = "ready"
+            stage.message = None
+            await sessions.set(token, stage)
+            await query.message.edit_text(staged_text(f"{stage.owner}/{stage.name}", stage.branch, stage.changes), reply_markup=stage_actions(token))
+            return
+        if action == "confirm":
+            if stage.status != "awaiting_confirmation" or not stage.message or not stage.changes:
+                await query.message.edit_text(error_message("This commit review is no longer active."), reply_markup=stage_actions(token))
+                return
+            try:
+                plan = CommitPlan(f"{stage.owner}/{stage.name}", stage.branch, stage.message, [FileChange(x.path, x.status, x.content, x.additions, x.deletions) for x in stage.changes])
+                await query.message.edit_text("<b>Creating commit…</b>")
+                result = await CommitEngine(service).execute(plan, expected_head=stage.base_head)
+                await sessions.delete(token)
+                await query.message.edit_text(commit_result(result["new_sha"], f"{len(stage.changes)} files", stage.message), reply_markup=back("nav:back"))
+            except Exception as exc:
+                stage.status = "ready"
+                await sessions.set(token, stage)
+                await query.message.edit_text(error_message(str(exc)), reply_markup=stage_actions(token))
+            return
         if action != "commit" or not stage.changes:
             await query.message.edit_text(staged_text(f"{stage.owner}/{stage.name}", stage.branch, stage.changes), reply_markup=stage_actions(token))
             return
         try:
+            stage.status = "awaiting_message"
+            stage.message = None
+            await sessions.set(token, stage)
             await query.message.edit_text(staged_text(f"{stage.owner}/{stage.name}", stage.branch, stage.changes))
             await query.message.reply_text(COMMIT_MESSAGE_PROMPT)
-            stage.status = "awaiting_message"
-            await sessions.set(token, stage)
         except Exception as exc:
-            await query.message.edit_text(error_message(str(exc)), reply_markup=back())
+            await query.message.edit_text(error_message(str(exc)), reply_markup=stage_actions(token))
     
     @app.on_message(filters.text & ~filters.command(["start", "repos"]))
     async def handle_staged_message(client, message):
         token = await sessions.stage(message.from_user.id)
         stage = await sessions.get(token) if token else None
-        if not isinstance(stage, CommitStageSession) or stage.chat_id != message.chat.id or getattr(stage, "status", "awaiting_message") != "awaiting_message":
+        if not isinstance(stage, CommitStageSession) or stage.chat_id != message.chat.id or getattr(stage, "status", "ready") != "awaiting_message":
             return
         text_value = message.text.strip()
         if not text_value:
             await message.reply_text(INVALID_COMMIT_MESSAGE)
             return
-        plan = CommitPlan(f"{stage.owner}/{stage.name}", stage.branch, text_value, [FileChange(x.path, x.status, x.content, x.additions, x.deletions) for x in stage.changes])
-        try:
-            engine = CommitEngine(service)
-            result = await engine.execute(plan, expected_head=stage.base_head)
-            await sessions.delete(token)
-            await message.reply_text(commit_result(result["new_sha"], f"{len(stage.changes)} files", text_value), reply_markup=back("nav:back"))
-        except Exception as exc:
-            await message.reply_text(error_message(str(exc)), reply_markup=stage_actions(token))
+        stage.message = text_value
+        stage.status = "awaiting_confirmation"
+        await sessions.set(token, stage)
+        preview = staged_text(f"{stage.owner}/{stage.name}", stage.branch, stage.changes)
+        preview += f"\n\n<b>{COMMIT_MESSAGE}</b>\n<code>{__import__('html').escape(text_value)}</code>\n\n{CONFIRM_COMMIT}"
+        await message.reply_text(preview, reply_markup=stage_confirmation_actions(token))
 
     return handle_file, handle_browse, handle_edit

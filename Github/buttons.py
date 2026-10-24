@@ -520,6 +520,11 @@ def action_logs_text(name: str, content: str):
 def stage_actions(token: str):
     return InlineKeyboardMarkup([_row((COMMIT_STAGED, f"stage:{token}:commit"), (CLEAR_STAGED, f"stage:{token}:clear"))])
 
+def stage_confirmation_actions(token: str):
+    return InlineKeyboardMarkup([
+        _row((CONFIRM_COMMIT, f"stage:{token}:confirm"), (CANCEL, f"stage:{token}:cancel-confirm")),
+    ])
+
 def staged_text(repository: str, branch: str, changes):
     lines = [f"<b>{escape(repository)}</b> · <code>{escape(branch)}</code>", "", f"<b>{STAGED}</b>"]
     if not changes:
