@@ -263,14 +263,25 @@ def error_message(message: str | None = None):
 def commit_preview(data: CommitView):
     return f"<b>{REVIEW_CHANGES}</b>\n\n<code>{escape(data.repository)}</code> · <code>{escape(data.branch)}</code>\n\n{FILES}  <b>{data.files}</b>\n{ADDED}  <b>+{data.additions}</b>\n{REMOVED}  <b>-{data.deletions}</b>\n\n<b>{COMMIT_MESSAGE}</b>\n<code>{escape(data.message)}</code>\n\n{CONFIRM_COMMIT}"
 
-def files(items, browser_token: str, parent_token: str | None = None):
+def files(items, browser_token: str, parent_token: str | None = None, page: int = 0):
+    page = max(0, page)
+    start = page * 20
+    visible = items[start:start + 20]
     rows = []
-    for index, item in enumerate(items[:20]):
+    for index, item in enumerate(visible, start=start):
         name = item.get("name", "item")
         label = f"{DIRECTORY}{name}" if item.get("type") == "dir" else name
         rows.append(_row((label[:55], f"file:{browser_token}:{index}")))
+    navigation = []
+    if page > 0:
+        navigation.append(InlineKeyboardButton(PREVIOUS, callback_data=f"filepage:{browser_token}:{page - 1}"))
+    if start + 20 < len(items):
+        navigation.append(InlineKeyboardButton(NEXT, callback_data=f"filepage:{browser_token}:{page + 1}"))
+    if navigation:
+        rows.append(navigation)
     rows.append(_row((BACK, f"browse:{parent_token}:back" if parent_token else "nav:back")))
     return InlineKeyboardMarkup(rows)
+
 
 def file_view(repository_id: int, edit_token: str, browser_token: str, webapp_url: str | None = None, path: str | None = None, branch: str | None = None):
     rows = [_row((EDIT, f"edit:{edit_token}"))]
@@ -281,28 +292,26 @@ def file_view(repository_id: int, edit_token: str, browser_token: str, webapp_ur
     rows.append(_row((BACK, f"browse:{browser_token}:back")))
     return InlineKeyboardMarkup(rows)
 
-def files_text(owner: str, name: str, branch: str, path: str, items):
+def files_text(owner: str, name: str, branch: str, path: str, items, page: int = 0):
     title = f"<b>{escape(owner)}/{escape(name)}</b>"
     branch_line = f"<b>{BRANCH}</b>  <code>{escape(branch)}</code>"
-    location = f"\n\n<b>Path</b>  <code>/{escape(path)}</code>" if path else "\n\n<b>Path</b>  <code>/</code>"
+    location = f"\\n\\n<b>Path</b>  <code>/{escape(path)}</code>" if path else "\\n\\n<b>Path</b>  <code>/</code>"
     if not items:
-        return f"{title}\n{branch_line}{location}\n\n{EMPTY}"
-    lines = [
-        title,
-        branch_line,
-        location,
-        "",
-        f"<b>Contents</b> · {len(items)} item(s)",
-    ]
-    for item in items[:20]:
-        name = escape(item.get("name", "item"))
+        return f"{title}\\n{branch_line}{location}\\n\\n{EMPTY}"
+    page = max(0, page)
+    start = page * 20
+    visible = items[start:start + 20]
+    lines = [title, branch_line, location, "", f"<b>Contents</b> · {len(items)} item(s)"]
+    for item in visible:
+        item_name = escape(item.get("name", "item"))
         if item.get("type") == "dir":
-            lines.append(f"\n<b>DIR</b>  <code>{name}/</code>")
+            lines.append(f"\\n<b>DIR</b>  <code>{item_name}/</code>")
         else:
-            lines.append(f"\n<code>{name}</code>")
+            lines.append(f"\\n<code>{item_name}</code>")
     if len(items) > 20:
-        lines.append(f"\n\nShowing first 20 of {len(items)} items.")
+        lines.append(f"\\n\\nPage {page + 1} · showing {start + 1}–{min(start + 20, len(items))} of {len(items)} items.")
     return "".join(lines)
+
 
 def edit_prompt(path: str):
     return f"<b>{EDIT_FILE}</b>\n\n<code>{escape(path)}</code>\n\n{EDIT_INSTRUCTION}"
