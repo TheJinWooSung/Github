@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from html import escape
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 
+from .github.diff import unified_diff
+
 START = "GitHub control center"
 START_HINT = "Manage repositories, branches, files, commits, pull requests and Actions from Telegram."
 REPOSITORIES = "Repositories"
@@ -517,13 +519,42 @@ def action_logs_text(name: str, content: str):
     return f"<b>{escape(name)}</b>\n\n<pre>{escape(content[-3500:])}</pre>"
 
 
+PREVIEW_STAGED_DIFF = "Preview diff"
+DIFF_UNAVAILABLE = "Original file content is unavailable. Reopen and restage this file to preview its exact diff."
+DIFF_TRUNCATED_NOTE = "\n\n… Diff truncated for Telegram."
+
 def stage_actions(token: str):
-    return InlineKeyboardMarkup([_row((COMMIT_STAGED, f"stage:{token}:commit"), (CLEAR_STAGED, f"stage:{token}:clear"))])
+    return InlineKeyboardMarkup([
+        _row((PREVIEW_STAGED_DIFF, f"stage:{token}:diff:0"), (COMMIT_STAGED, f"stage:{token}:commit")),
+        _row((CLEAR_STAGED, f"stage:{token}:clear")),
+    ])
 
 def stage_confirmation_actions(token: str):
     return InlineKeyboardMarkup([
-        _row((CONFIRM_COMMIT, f"stage:{token}:confirm"), (CANCEL, f"stage:{token}:cancel-confirm")),
+        _row((PREVIEW_STAGED_DIFF, f"stage:{token}:diff:0"), (CONFIRM_COMMIT, f"stage:{token}:confirm")),
+        _row((CANCEL, f"stage:{token}:cancel-confirm")),
     ])
+
+def stage_diff_actions(token: str, index: int, total: int):
+    row = []
+    if index > 0:
+        row.append(InlineKeyboardButton(DIFF_PREVIOUS, callback_data=f"stage:{token}:diff:{index - 1}"))
+    if index + 1 < total:
+        row.append(InlineKeyboardButton(DIFF_NEXT, callback_data=f"stage:{token}:diff:{index + 1}"))
+    rows = [row] if row else []
+    rows.append(_row((DIFF_BACK, f"stage:{token}:review")))
+    return InlineKeyboardMarkup(rows)
+
+def staged_diff_text(change, index: int, total: int):
+    header = f"<b>Staged diff · {index + 1}/{total}</b>\n\n<code>{escape(change.path)}</code> · +{change.additions} -{change.deletions}"
+    if change.original is None:
+        return header + f"\n\n{DIFF_UNAVAILABLE}"
+    patch = unified_diff(change.original, change.content or "", change.path)
+    if not patch:
+        return header + f"\n\n{DIFF_NO_PATCH}"
+    truncated = len(patch) > 2800
+    patch = patch[:2800]
+    return header + f"\n\n<pre>{escape(patch)}</pre>" + (DIFF_TRUNCATED_NOTE if truncated else "")
 
 def staged_text(repository: str, branch: str, changes):
     lines = [f"<b>{escape(repository)}</b> · <code>{escape(branch)}</code>", "", f"<b>{STAGED}</b>"]

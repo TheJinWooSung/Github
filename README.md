@@ -37,6 +37,7 @@ The interface is designed around short actions and focused repository screens ra
 | Repository | Browse, search and open repository dashboards |
 | Source | Browse branches, directories and files |
 | Editing | Read, edit and review file changes |
+| Diff previews | Inspect line-by-line staged changes before committing |
 | Commits | Build Git objects and create commits |
 | Pull requests | Inspect files, commits and reviews |
 | Reviews | Approve, request changes and comment |
@@ -396,7 +397,8 @@ For production, provide a public HTTPS endpoint, persistent MongoDB/Redis instan
 
 ### Remaining product expansion
 
-- [x] Multi-file commit staging 
+- [x] Multi-file commit staging
+- [x] Line-by-line staged diff previews before commit confirmation
 - [x] Telegram WebApp editor
 - [x] Rich interactive diff viewer
 - [x] GitHub Discussions and answer workflow

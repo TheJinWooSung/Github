@@ -1,7 +1,7 @@
 import base64
 import difflib
 from pyrogram import filters
-from ..buttons import back, files, file_view, files_text, file_text, error_message, edit_prompt, commit_prompt, commit_result, stage_actions, stage_confirmation_actions, staged_text, SESSION_EXPIRED, COMMIT_SESSION_EXPIRED, STAGED_CLEARED, STAGED_BRANCH_CHANGED, COMMIT_MESSAGE_PROMPT, UNCHANGED_FILE, INVALID_COMMIT_MESSAGE, CONFIRM_COMMIT, COMMIT_CANCELLED
+from ..buttons import back, files, file_view, files_text, file_text, error_message, edit_prompt, commit_prompt, commit_result, stage_actions, stage_confirmation_actions, stage_diff_actions, staged_diff_text, staged_text, SESSION_EXPIRED, COMMIT_SESSION_EXPIRED, STAGED_CLEARED, STAGED_BRANCH_CHANGED, COMMIT_MESSAGE_PROMPT, UNCHANGED_FILE, INVALID_COMMIT_MESSAGE, CONFIRM_COMMIT, COMMIT_CANCELLED
 from ..state import EditSession, BrowserSession, SessionStore, CommitStageSession, StagedChange
 from ..github.commit import CommitEngine, CommitPlan, FileChange
 
@@ -147,7 +147,7 @@ def register(app, service, sessions: SessionStore, webapp_url: str | None = None
             elif not stage.base_head:
                 stage.base_head = session.base_head
             stage.changes = [item for item in stage.changes if item.path != session.path]
-            stage.changes.append(StagedChange(session.path, "modified", session.content, additions, deletions))
+            stage.changes.append(StagedChange(session.path, "modified", session.content, additions, deletions, session.original))
             await sessions.set(existing_token, stage)
             await sessions.delete(token)
             await message.reply_text(staged_text(f"{stage.owner}/{stage.name}", stage.branch, stage.changes), reply_markup=stage_actions(existing_token))
@@ -163,6 +163,28 @@ def register(app, service, sessions: SessionStore, webapp_url: str | None = None
             return
         if stage.status == "committing":
             await query.answer("A commit is already in progress.", show_alert=True)
+            return
+        if action.startswith("diff:"):
+            try:
+                index = int(action.split(":", 1)[1])
+            except ValueError:
+                await query.message.edit_text(error_message("Invalid diff page."), reply_markup=stage_actions(token))
+                return
+            if not stage.changes:
+                await query.message.edit_text(staged_text(f"{stage.owner}/{stage.name}", stage.branch, stage.changes), reply_markup=stage_actions(token))
+                return
+            index = max(0, min(index, len(stage.changes) - 1))
+            await query.message.edit_text(
+                staged_diff_text(stage.changes[index], index, len(stage.changes)),
+                reply_markup=stage_diff_actions(token, index, len(stage.changes)),
+            )
+            return
+        if action == "review":
+            markup = stage_confirmation_actions(token) if stage.status == "awaiting_confirmation" else stage_actions(token)
+            preview = staged_text(f"{stage.owner}/{stage.name}", stage.branch, stage.changes)
+            if stage.status == "awaiting_confirmation" and stage.message:
+                preview += f"\n\n<b>{COMMIT_MESSAGE}</b>\n<code>{__import__('html').escape(stage.message)}</code>\n\n{CONFIRM_COMMIT}"
+            await query.message.edit_text(preview, reply_markup=markup)
             return
         if action == "clear":
             await sessions.delete(token)

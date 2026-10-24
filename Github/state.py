@@ -35,6 +35,7 @@ class StagedChange:
     content: str | None = None
     additions: int = 0
     deletions: int = 0
+    original: str | None = None
 
 @dataclass
 class CommitStageSession:
