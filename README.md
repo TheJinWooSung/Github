@@ -396,28 +396,10 @@ For production, provide a public HTTPS endpoint, persistent MongoDB/Redis instan
 
 ### Remaining product expansion
 
-- [x] Multi-file commit staging UI
+- [x] Multi-file commit staging 
 - [x] Telegram WebApp editor
 - [x] Rich interactive diff viewer
-- [x] GitHub Discussions UI and answer workflow
-- [x] Full webhook event management UI
-
-## Development
-
-The codebase keeps Telegram handlers, GitHub API operations, persistence, sessions and web endpoints separated so individual features can evolve without turning the bot into one large module.
-
-Contributions should keep the same focus: production-ready behavior, compact Telegram UI and no unnecessary dependencies.
-
-## License
-
-See the repository license for the applicable terms.
+- [x] GitHub Discussions and answer workflow
+- [x] Full webhook event management
 
 ---
-
-<div align="center">
-
-**GitHub for Telegram**
-
-A focused GitHub management experience, built around Telegram.
-
-</div>
