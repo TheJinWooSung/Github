@@ -41,7 +41,7 @@ class CommitPlan:
             path = raw_path.strip("/")
             if not path or path in seen:
                 raise ValueError("Every changed path must be unique")
-            if "\\x00" in path or "\\\\" in path or any(part in {".", ".."} for part in path.split("/")):
+            if "\x00" in path or "\\" in path or any(part in {".", ".."} for part in path.split("/")):
                 raise ValueError("Invalid file path")
             seen.add(path)
             if change.status not in {"added", "modified", "deleted"}:

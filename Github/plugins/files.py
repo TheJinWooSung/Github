@@ -178,6 +178,14 @@ def register(app, service, sessions: SessionStore, webapp_url: str | None = None
             if stage.status != "awaiting_confirmation" or not stage.message or not stage.changes:
                 await query.message.edit_text(error_message("This commit review is no longer active."), reply_markup=stage_actions(token))
                 return
+            if not stage.base_head:
+                stage.status = "ready"
+                await sessions.set(token, stage)
+                await query.message.edit_text(
+                    error_message("The original branch revision is unavailable. Reopen the files and stage the changes again."),
+                    reply_markup=stage_actions(token),
+                )
+                return
             try:
                 plan = CommitPlan(f"{stage.owner}/{stage.name}", stage.branch, stage.message, [FileChange(x.path, x.status, x.content, x.additions, x.deletions) for x in stage.changes])
                 stage.status = "committing"
