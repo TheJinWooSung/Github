@@ -220,7 +220,17 @@ def repositories(items):
     return InlineKeyboardMarkup(rows)
 
 def start_text():
-    return f"<b>{START}</b>\n\n{START_HINT}"
+    return (
+        f"<b>{START}</b>\n"
+        f"<i>Your GitHub workspace, right inside Telegram.</i>\n\n"
+        f"{START_HINT}\n\n"
+        f"<b>Explore</b>\n"
+        f"Browse source files, review pull requests, inspect commits, "
+        f"manage Actions and receive repository updates.\n\n"
+        f"<b>Get started</b>\n"
+        f"Connect your GitHub account to access your repositories and "
+        f"personalize this workspace."
+    )
 
 def repository_list(items):
     if not items:
@@ -233,8 +243,19 @@ def repository_list(items):
     return "".join(lines)
 
 def repo_home(owner: str, name: str, branch: str, description: str | None = None):
-    body = f"<b>{escape(owner)}/{escape(name)}</b>\n\n{BRANCH}  <code>{escape(branch)}</code>"
-    return f"{body}\n\n{escape(description)}" if description else body
+    title = f"<b>{escape(owner)}/{escape(name)}</b>"
+    branch_line = f"<b>{BRANCH}</b>  <code>{escape(branch)}</code>"
+    summary = f"\n\n{escape(description)}" if description else ""
+    return (
+        f"{title}\n"
+        f"<i>Repository workspace</i>\n\n"
+        f"{branch_line}{summary}\n\n"
+        f"<b>Repository tools</b>\n"
+        f"Files · commits · branches · tags\n"
+        f"Pull requests · issues · Actions\n"
+        f"Releases · contributors · deployments\n\n"
+        f"<i>Select a section below to continue.</i>"
+    )
 
 def error_message(message: str | None = None):
     return f"<b>{ERROR}</b>\n\n<code>{escape(message)}</code>" if message else f"<b>{ERROR}</b>"
@@ -261,14 +282,26 @@ def file_view(repository_id: int, edit_token: str, browser_token: str, webapp_ur
     return InlineKeyboardMarkup(rows)
 
 def files_text(owner: str, name: str, branch: str, path: str, items):
-    title = f"<b>{escape(owner)}/{escape(name)}</b>  <code>{escape(branch)}</code>"
-    location = f"\n\n<code>/{escape(path)}</code>" if path else ""
+    title = f"<b>{escape(owner)}/{escape(name)}</b>"
+    branch_line = f"<b>{BRANCH}</b>  <code>{escape(branch)}</code>"
+    location = f"\n\n<b>Path</b>  <code>/{escape(path)}</code>" if path else "\n\n<b>Path</b>  <code>/</code>"
     if not items:
-        return title + location + "\n\n" + EMPTY
-    lines = [title + location]
+        return f"{title}\n{branch_line}{location}\n\n{EMPTY}"
+    lines = [
+        title,
+        branch_line,
+        location,
+        "",
+        f"<b>Contents</b> · {len(items)} item(s)",
+    ]
     for item in items[:20]:
-        marker = "DIR" if item.get("type") == "dir" else "FILE"
-        lines.append(f"\n{marker}  <code>{escape(item.get('name', 'item'))}</code>")
+        name = escape(item.get("name", "item"))
+        if item.get("type") == "dir":
+            lines.append(f"\n<b>DIR</b>  <code>{name}/</code>")
+        else:
+            lines.append(f"\n<code>{name}</code>")
+    if len(items) > 20:
+        lines.append(f"\n\nShowing first 20 of {len(items)} items.")
     return "".join(lines)
 
 def edit_prompt(path: str):
